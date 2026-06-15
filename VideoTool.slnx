@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/VideoTool.Data/VideoTool.Data.csproj" />
+    <Project Path="src/VideoTool.Domain/VideoTool.Domain.csproj" />
+    <Project Path="src/VideoTool.Web/VideoTool.Web.csproj" />
+  </Folder>
+</Solution>
