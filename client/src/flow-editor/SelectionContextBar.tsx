@@ -44,7 +44,7 @@ export function SelectionContextBar({ state, onDeleteSelection, onBreakLink }: S
           </button>
           {showHelp && (
             <div className="flow-help-tooltip" role="tooltip">
-              Drag into chapter groups to nest · Shift+click multi-select · Ctrl+C/V copy/paste
+              Drag nodes from the palette · Drop into chapter groups to nest · Shift+click multi-select · Ctrl+C/V copy/paste
             </div>
           )}
         </div>

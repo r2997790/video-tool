@@ -32,10 +32,22 @@ export type TimelineStepRow = {
 export type TimelineRow = TimelineStepRow | TimelineChapterRow
 
 /** Nested inside chapter blocks only (between videos). */
-const CHAPTER_INTERSTITIAL = new Set<FlowNode['type']>(['question', 'branch', 'event', 'aichat'])
+export const CHAPTER_INTERSTITIAL_TYPES = new Set<FlowNode['type']>(['question', 'branch', 'event', 'aichat'])
 
 /** Top-level timeline rows (intro/outro stay outside chapter blocks). */
-const TOP_LEVEL_STEP = new Set<FlowNode['type']>(['intro', 'question', 'branch', 'outro', 'event', 'aichat'])
+export const TOP_LEVEL_STEP_TYPES = new Set<FlowNode['type']>(['intro', 'question', 'branch', 'outro', 'event', 'aichat'])
+
+/** Attached to a video node during playback. */
+export const VIDEO_NEST_TYPES = new Set<FlowNode['type']>(['pause', 'toaster'])
+
+/** Types that can be dropped into a chapter group on the visual canvas. */
+export const CHAPTER_NEST_TYPES = new Set<FlowNode['type']>([...CHAPTER_INTERSTITIAL_TYPES, 'video'])
+
+/** Types that can be dragged out of a chapter to the top level. */
+export const TOP_LEVEL_DRAG_TYPES = new Set<FlowNode['type']>([...TOP_LEVEL_STEP_TYPES, 'video'])
+
+const CHAPTER_INTERSTITIAL = CHAPTER_INTERSTITIAL_TYPES
+const TOP_LEVEL_STEP = TOP_LEVEL_STEP_TYPES
 
 export function getVideoIdFromNode(node: FlowNode): number | null {
   const id = node.parameters.videoId

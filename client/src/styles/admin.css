@@ -1202,11 +1202,118 @@
 }
 
 .flow-chapter-group-body {
+  position: relative;
   flex: 1;
-  padding: 8px;
-  font-size: 11px;
-  color: #6b6d6f;
+  padding: 8px 16px 16px;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.flow-chapter-insertion-line {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  height: 2px;
+  background: #f59e0b;
+  border-radius: 1px;
   pointer-events: none;
+}
+
+.flow-node-palette-panel {
+  margin: 12px;
+  pointer-events: none;
+}
+
+.flow-node-palette {
+  pointer-events: auto;
+  background: rgba(24, 26, 28, 0.92);
+  border: 1px solid #2e3032;
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  max-width: 200px;
+  backdrop-filter: blur(8px);
+}
+
+.flow-node-palette.is-collapsed {
+  max-width: 120px;
+}
+
+.flow-node-palette-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-bottom: 1px solid #2e3032;
+}
+
+.flow-node-palette-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #9ca3af;
+}
+
+.flow-node-palette-toggle {
+  background: none;
+  border: none;
+  color: #9ca3af;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0 4px;
+}
+
+.flow-node-palette-toggle:hover {
+  color: #e5e7eb;
+}
+
+.flow-node-palette-chips {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.flow-node-palette-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid #3a3d40;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #e5e7eb;
+  cursor: grab;
+  user-select: none;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.flow-node-palette-chip:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.flow-node-palette-chip:active {
+  cursor: grabbing;
+}
+
+.flow-node-palette-chip-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .flow-node-palette {
+    max-width: 160px;
+  }
+
+  .flow-node-palette-chips {
+    max-height: 200px;
+  }
 }
 
 .flow-library-modal {

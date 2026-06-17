@@ -2,10 +2,14 @@ import type { Node } from '@xyflow/react'
 import type { AdminChapter, AdminChapterVideo, FlowNode, FlowProject } from '../types'
 import { isPlaybackTriggerNode } from './flowRuntime'
 import {
+  CHAPTER_NEST_TYPES,
   findChapterAncestor,
   parseChapterBlockForLayout,
   projectToTimeline,
+  TOP_LEVEL_DRAG_TYPES,
+  VIDEO_NEST_TYPES,
   type ChapterSegment,
+  type InsertTarget,
 } from './flowTimeline'
 
 export const CHAPTER_GROUP_MIN_WIDTH = 280
@@ -49,6 +53,33 @@ function computeChapterGroupSize(segmentCount: number, maxEvents: number): { wid
   return { width, height }
 }
 
+/** True for chapter headers and top-level nodes whose canvas position should be persisted. */
+export function isFreePositionNode(project: FlowProject, nodeId: string): boolean {
+  const node = project.nodes.find(n => n.id === nodeId)
+  if (!node) return false
+  if (node.type === 'chapter') return true
+  if (findChapterAncestor(project, nodeId)) return false
+  if (findVideoParent(project, nodeId)) return false
+  return true
+}
+
+function resolveChapterDropIndex(
+  localY: number,
+  segments: ChapterSegment[],
+): number | undefined {
+  let afterIndex: number | undefined
+  let childY = CHAPTER_GROUP_PADDING + 40
+  for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i]
+    const segHeight = seg.kind === 'video'
+      ? NESTED_NODE_HEIGHT + 8 + (seg.events.length > 0 ? 56 : 0) + 8
+      : NESTED_NODE_HEIGHT + 12
+    if (localY > childY + segHeight / 2) afterIndex = i
+    childY += segHeight
+  }
+  return afterIndex
+}
+
 export function projectToGraph(
   project: FlowProject,
   chapters: AdminChapter[],
@@ -59,6 +90,7 @@ export function projectToGraph(
   const placed = new Set<string>()
   let topX = 80
   const topY = 80
+  let chapterIndex = 0
 
   for (const row of timeline) {
     if (row.kind === 'step') {
@@ -85,8 +117,9 @@ export function projectToGraph(
     }, 0)
     const size = computeChapterGroupSize(block.segments.length, maxEvents)
 
-    const groupX = chapterNode.x ?? topX
-    const groupY = chapterNode.y ?? topY
+    const groupX = chapterNode.x ?? (80 + chapterIndex * 60)
+    const groupY = chapterNode.y ?? (80 + chapterIndex * 320)
+    chapterIndex++
     placed.add(chapterNode.id)
 
     nodes.push({
@@ -156,8 +189,6 @@ export function projectToGraph(
       if (seg.events.length > 0) childY += 56
       childY += 8
     }
-
-    topX = groupX + size.width + 40
   }
 
   for (const n of project.nodes) {
@@ -170,7 +201,7 @@ export function projectToGraph(
         type: 'flowNode',
         parentId: chapterAncestor.id,
         extent: 'parent',
-        position: { x: n.x ?? CHAPTER_GROUP_PADDING, y: n.y ?? CHAPTER_GROUP_PADDING + 40 },
+        position: { x: CHAPTER_GROUP_PADDING, y: CHAPTER_GROUP_PADDING + 40 },
         data: { label: n.name, nodeType: n.type, parameters: n.parameters, raw: n },
         draggable: true,
       })
@@ -186,7 +217,7 @@ export function projectToGraph(
         type: 'flowNode',
         parentId: chapterAncestor2?.id,
         extent: chapterAncestor2 ? 'parent' : undefined,
-        position: { x: n.x ?? 80, y: n.y ?? 80 },
+        position: { x: 80, y: 80 },
         data: { label: n.name, nodeType: n.type, parameters: n.parameters, raw: n },
         draggable: true,
       })
@@ -212,24 +243,22 @@ export type DropTarget =
   | { scope: 'chapter'; chapterNodeId: string; afterSegmentIndex?: number }
   | { scope: 'video'; videoNodeId: string }
 
-const TOP_LEVEL_TYPES = new Set<FlowNode['type']>(['intro', 'question', 'branch', 'outro', 'event', 'aichat', 'chapter', 'video'])
-const CHAPTER_NEST_TYPES = new Set<FlowNode['type']>(['question', 'branch', 'event', 'aichat', 'video'])
-const VIDEO_NEST_TYPES = new Set<FlowNode['type']>(['pause', 'toaster'])
+function canInsertAtTop(nodeType: FlowNode['type']): boolean {
+  return nodeType !== 'pause' && nodeType !== 'toaster'
+}
 
-export function resolveDropTarget(
+function resolveDropAtPosition(
   project: FlowProject,
-  draggedNodeId: string,
+  nodeType: FlowNode['type'],
   absolutePosition: { x: number; y: number },
   graphNodes: Node[],
-  _chapters: AdminChapter[],
   chapterVideos: AdminChapterVideo[],
+  draggedNodeId?: string,
 ): DropTarget | null {
-  const dragged = project.nodes.find(n => n.id === draggedNodeId)
-  if (!dragged) return null
-
   const chapterGroups = graphNodes.filter(n => n.type === 'chapterGroup')
   const centerX = absolutePosition.x + NESTED_NODE_WIDTH / 2
   const centerY = absolutePosition.y + NESTED_NODE_HEIGHT / 2
+  let insideChapter = false
 
   for (const group of chapterGroups) {
     const gx = group.position.x
@@ -238,27 +267,20 @@ export function resolveDropTarget(
     const gh = (group.style?.height as number) ?? CHAPTER_GROUP_MIN_HEIGHT
     if (centerX < gx || centerX > gx + gw || centerY < gy || centerY > gy + gh) continue
 
-    if (CHAPTER_NEST_TYPES.has(dragged.type)) {
+    insideChapter = true
+
+    if (CHAPTER_NEST_TYPES.has(nodeType)) {
       const chapterNode = project.nodes.find(n => n.id === group.id)
       if (!chapterNode) continue
 
       const block = parseChapterBlockForLayout(project, chapterNode, chapterVideos)
       const localY = centerY - gy
-      let afterIndex: number | undefined
-      let childY = CHAPTER_GROUP_PADDING + 40
-      for (let i = 0; i < block.segments.length; i++) {
-        const seg = block.segments[i]
-        const segHeight = seg.kind === 'video'
-          ? NESTED_NODE_HEIGHT + 8 + (seg.events.length > 0 ? 56 : 0) + 8
-          : NESTED_NODE_HEIGHT + 12
-        if (localY > childY + segHeight / 2) afterIndex = i
-        childY += segHeight
-      }
+      const afterIndex = resolveChapterDropIndex(localY, block.segments)
 
       return { scope: 'chapter', chapterNodeId: group.id, afterSegmentIndex: afterIndex }
     }
 
-    if (VIDEO_NEST_TYPES.has(dragged.type)) {
+    if (VIDEO_NEST_TYPES.has(nodeType)) {
       const children = graphNodes.filter(n => n.parentId === group.id && (n.data as { nodeType: string }).nodeType === 'video')
       for (const child of children) {
         const cx = gx + child.position.x
@@ -270,12 +292,52 @@ export function resolveDropTarget(
     }
   }
 
-  if (TOP_LEVEL_TYPES.has(dragged.type)) {
-    const currentChapter = findChapterAncestor(project, draggedNodeId)
-    if (currentChapter) return { scope: 'top' }
+  if (!insideChapter) {
+    if (draggedNodeId) {
+      if (TOP_LEVEL_DRAG_TYPES.has(nodeType)) {
+        const currentChapter = findChapterAncestor(project, draggedNodeId)
+        if (currentChapter) return { scope: 'top' }
+      }
+    } else if (canInsertAtTop(nodeType)) {
+      return { scope: 'top' }
+    }
   }
 
   return null
+}
+
+export function resolveDropTarget(
+  project: FlowProject,
+  draggedNodeId: string,
+  absolutePosition: { x: number; y: number },
+  graphNodes: Node[],
+  _chapters: AdminChapter[],
+  chapterVideos: AdminChapterVideo[],
+): DropTarget | null {
+  const dragged = project.nodes.find(n => n.id === draggedNodeId)
+  if (!dragged) return null
+  return resolveDropAtPosition(project, dragged.type, absolutePosition, graphNodes, chapterVideos, draggedNodeId)
+}
+
+export function resolveInsertDropTarget(
+  project: FlowProject,
+  flowPosition: { x: number; y: number },
+  nodeType: FlowNode['type'],
+  graphNodes: Node[],
+  _chapters: AdminChapter[],
+  chapterVideos: AdminChapterVideo[],
+): DropTarget | null {
+  return resolveDropAtPosition(project, nodeType, flowPosition, graphNodes, chapterVideos)
+}
+
+export function dropTargetToInsertTarget(target: DropTarget): InsertTarget {
+  if (target.scope === 'top') return { scope: 'top' }
+  if (target.scope === 'video') return { scope: 'video', videoNodeId: target.videoNodeId }
+  return {
+    scope: 'chapter',
+    chapterNodeId: target.chapterNodeId,
+    afterSegmentIndex: target.afterSegmentIndex,
+  }
 }
 
 export function dropTargetToEdit(
@@ -305,9 +367,30 @@ export function dropTargetToEdit(
       const block = parseChapterBlockForLayout(project, chapterNode, chapterVideos)
       const segmentIds = block.segments.map(segmentNodeId)
       const currentIdx = segmentIds.indexOf(draggedNodeId)
-      const targetIdx = target.afterSegmentIndex != null ? target.afterSegmentIndex + 1 : segmentIds.length - 1
+      if (currentIdx < 0) return null
+
+      let targetIdx: number
+      if (target.afterSegmentIndex != null) {
+        targetIdx = target.afterSegmentIndex + 1
+      } else {
+        targetIdx = 0
+      }
+
+      if (targetIdx >= segmentIds.length) {
+        const lastId = segmentIds[segmentIds.length - 1]
+        if (lastId && lastId !== draggedNodeId && currentIdx !== segmentIds.length - 1) {
+          return {
+            type: 'reorderChapterSegment',
+            chapterNodeId: target.chapterNodeId,
+            segmentNodeId: draggedNodeId,
+            overSegmentNodeId: lastId,
+          }
+        }
+        return null
+      }
+
       const overId = segmentIds[targetIdx]
-      if (overId && overId !== draggedNodeId && currentIdx >= 0) {
+      if (overId && overId !== draggedNodeId) {
         return {
           type: 'reorderChapterSegment',
           chapterNodeId: target.chapterNodeId,

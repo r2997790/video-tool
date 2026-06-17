@@ -19,30 +19,31 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import type { FlowNode } from '../types'
 import { canConnect } from './flowSchema'
-import { newNode } from './flowSchema'
 import {
   applyTimelineEdit,
   canNestInChapter,
   chapterLabel,
   nodeSummary,
-  pickNextUnusedChapterVideo,
   projectToTimeline,
   resolveInsertTarget,
   resolveTimelineDragId,
   rowKey,
   segmentSortableId,
+  TOP_LEVEL_STEP_TYPES,
+  CHAPTER_INTERSTITIAL_TYPES,
   type TimelineRow,
   videoLabel,
 } from './flowTimeline'
 import { getChapterIdFromNode } from './flowRuntime'
+import { insertNodeWithSelection } from './flowInsert'
 import type { FlowEditorState } from './useFlowEditorState'
 
 interface TimelineEditorProps {
   state: FlowEditorState
 }
 
-const BETWEEN_VIDEO_TYPES = new Set<FlowNode['type']>(['question', 'branch', 'event', 'aichat'])
-const TOP_LEVEL_TYPES = new Set<FlowNode['type']>(['intro', 'question', 'branch', 'outro', 'event', 'aichat', 'chapter'])
+const BETWEEN_VIDEO_TYPES = CHAPTER_INTERSTITIAL_TYPES
+const TOP_LEVEL_TYPES = new Set<FlowNode['type']>([...TOP_LEVEL_STEP_TYPES, 'chapter'])
 
 function formatSeconds(s: number): string {
   const m = Math.floor(s / 60)
@@ -460,36 +461,7 @@ export function addNodeWithContext(
   type: FlowNode['type'],
   toast: { error: (msg: string) => void },
 ): void {
-  const { project, applyEdit, chapters, chapterVideos, selectedNode, selectNode } = state
-  const node = newNode(type)
-
-  const target = resolveInsertTarget(project, selectedNode, type, chapterVideos)
-  if (target.scope === 'reject') {
-    toast.error(target.message)
-    return
-  }
-
-  if (type === 'video' && target.scope === 'chapter') {
-    const chapterNode = project.nodes.find(n => n.id === target.chapterNodeId)
-    if (chapterNode) {
-      const nextVid = pickNextUnusedChapterVideo(project, chapterNode, chapterVideos)
-      const chId = getChapterIdFromNode(chapterNode) ?? 0
-      if (nextVid) {
-        node.parameters = { chapterId: chId, videoId: nextVid.id }
-        node.name = nextVid.title
-      } else {
-        node.parameters = { chapterId: chId, videoId: 0 }
-      }
-    }
-  }
-
-  if (type === 'chapter') {
-    const firstCh = chapters[0]
-    if (firstCh) node.parameters = { chapterId: firstCh.id }
-  }
-
-  applyEdit({ type: 'insert', node, target })
-  selectNode(node)
+  insertNodeWithSelection(state, type, toast)
 }
 
 export function canDropNodeType(nodeType: FlowNode['type'], zone: 'video' | 'between' | 'top'): boolean {

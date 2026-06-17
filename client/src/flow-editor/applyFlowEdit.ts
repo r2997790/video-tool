@@ -1,4 +1,5 @@
 import type { AdminChapter, AdminChapterVideo, FlowProject } from '../types'
+import { isFreePositionNode } from './flowGraphLayout'
 import { canConnect } from './flowSchema'
 import {
   applyTimelineEdit,
@@ -99,7 +100,8 @@ export function applyFlowEdit(
         ...project,
         nodes: project.nodes.map(n => {
           const pos = posMap.get(n.id)
-          return pos ? { ...n, x: pos.x, y: pos.y } : n
+          if (!pos || !isFreePositionNode(project, n.id)) return n
+          return { ...n, x: pos.x, y: pos.y }
         }),
       }
     }

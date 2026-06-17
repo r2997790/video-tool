@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ReactFlow,
+  ReactFlowProvider,
   Background,
   Controls,
   MiniMap,
   useNodesState,
   useEdgesState,
+  useReactFlow,
   type Connection,
   type Node,
   type Edge,
@@ -22,9 +24,14 @@ import { canConnect } from './flowSchema'
 import { buildClipboard, pasteClipboard, type FlowClipboardPayload } from './flowClipboard'
 import {
   dropTargetToEdit,
+  dropTargetToInsertTarget,
+  isFreePositionNode,
   projectToGraph,
   resolveDropTarget,
+  resolveInsertDropTarget,
 } from './flowGraphLayout'
+import { insertNodeAtTarget } from './flowInsert'
+import { getPaletteDragType, VisualNodePalette } from './VisualNodePalette'
 import type { FlowEditorState } from './useFlowEditorState'
 import { useToast } from '../components/Toast'
 
@@ -59,7 +66,12 @@ function ChapterGroupNode({
   data,
   selected,
 }: {
-  data: { label: string; chapterSubtitle?: string; isDropTarget?: boolean }
+  data: {
+    label: string
+    chapterSubtitle?: string
+    isDropTarget?: boolean
+    insertionIndex?: number | null
+  }
   selected?: boolean
 }) {
   return (
@@ -70,7 +82,15 @@ function ChapterGroupNode({
         <span className="flow-chapter-group-title">{data.label}</span>
         {data.chapterSubtitle && <span className="flow-chapter-group-sub">{data.chapterSubtitle}</span>}
       </div>
-      <div className="flow-chapter-group-body">Drop nodes here</div>
+      <div className="flow-chapter-group-body">
+        {data.isDropTarget && data.insertionIndex != null && (
+          <div
+            className="flow-chapter-insertion-line"
+            style={{ top: `${64 + (data.insertionIndex + 1) * 84}px` }}
+          />
+        )}
+        Drop nodes here
+      </div>
     </div>
   )
 }
@@ -119,7 +139,7 @@ interface VisualFlowEditorProps {
   state: FlowEditorState
 }
 
-export function VisualFlowEditor({ state }: VisualFlowEditorProps) {
+function VisualFlowEditorCanvas({ state }: VisualFlowEditorProps) {
   const {
     project,
     applyEdit,
@@ -133,14 +153,17 @@ export function VisualFlowEditor({ state }: VisualFlowEditorProps) {
     selectedEdge,
   } = state
   const toast = useToast()
+  const { screenToFlowPosition } = useReactFlow()
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
   const [dragOverChapterId, setDragOverChapterId] = useState<string | null>(null)
+  const [insertionIndex, setInsertionIndex] = useState<number | null>(null)
   const [a11yMessage, setA11yMessage] = useState('')
   const canvasRef = useRef<HTMLDivElement>(null)
   const clipboardRef = useRef<FlowClipboardPayload | null>(null)
   const syncingRef = useRef(false)
   const nodesRef = useRef<Node[]>([])
+  const fitViewOnceRef = useRef(false)
 
   useEffect(() => {
     nodesRef.current = nodes
@@ -163,6 +186,7 @@ export function VisualFlowEditor({ state }: VisualFlowEditorProps) {
             ...n.data,
             chapterSubtitle,
             isDropTarget: n.id === dragOverChapterId,
+            insertionIndex: n.id === dragOverChapterId ? insertionIndex : null,
           },
         }
       }
@@ -174,7 +198,7 @@ export function VisualFlowEditor({ state }: VisualFlowEditorProps) {
       }
       return n
     })
-  }, [project, chapters, chapterVideos, dragOverChapterId])
+  }, [project, chapters, chapterVideos, dragOverChapterId, insertionIndex])
 
   useEffect(() => {
     syncingRef.current = true
@@ -214,18 +238,25 @@ export function VisualFlowEditor({ state }: VisualFlowEditorProps) {
     }
   }, [onEdgesChange, edges, applyEdit, selectedEdge, selectEdge])
 
+  const updateDragTarget = useCallback((target: ReturnType<typeof resolveDropTarget>) => {
+    if (target?.scope === 'chapter') {
+      setDragOverChapterId(target.chapterNodeId)
+      setInsertionIndex(target.afterSegmentIndex ?? 0)
+    } else {
+      setDragOverChapterId(null)
+      setInsertionIndex(null)
+    }
+  }, [])
+
   const onNodeDrag = useCallback((_: unknown, node: Node) => {
     const abs = absolutePosition(node, nodesRef.current)
     const target = resolveDropTarget(project, node.id, abs, nodesRef.current, chapters, chapterVideos)
-    if (target?.scope === 'chapter') {
-      setDragOverChapterId(target.chapterNodeId)
-    } else {
-      setDragOverChapterId(null)
-    }
-  }, [project, chapters, chapterVideos])
+    updateDragTarget(target)
+  }, [project, chapters, chapterVideos, updateDragTarget])
 
   const onNodeDragStop = useCallback((_: unknown, node: Node) => {
     setDragOverChapterId(null)
+    setInsertionIndex(null)
     if (syncingRef.current) return
 
     const abs = absolutePosition(node, nodesRef.current)
@@ -237,13 +268,54 @@ export function VisualFlowEditor({ state }: VisualFlowEditorProps) {
       return
     }
 
-    const positions = nodesRef.current.map(n => ({
-      nodeId: n.id,
-      x: n.position.x,
-      y: n.position.y,
-    }))
-    applyEdit({ type: 'updatePositions', positions })
+    if (!isFreePositionNode(project, node.id)) return
+
+    const canvasNode = nodesRef.current.find(n => n.id === node.id)
+    if (!canvasNode) return
+
+    const pos = canvasNode.type === 'chapterGroup'
+      ? { x: canvasNode.position.x, y: canvasNode.position.y }
+      : abs
+
+    applyEdit({ type: 'updatePositions', positions: [{ nodeId: node.id, x: pos.x, y: pos.y }] })
   }, [project, chapters, chapterVideos, applyEdit])
+
+  const onDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+  }, [])
+
+  const onDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    setDragOverChapterId(null)
+    setInsertionIndex(null)
+
+    const nodeType = getPaletteDragType(e.dataTransfer)
+    if (!nodeType) return
+
+    const flowPosition = screenToFlowPosition({ x: e.clientX, y: e.clientY })
+    const dropTarget = resolveInsertDropTarget(
+      project,
+      flowPosition,
+      nodeType,
+      nodesRef.current,
+      chapters,
+      chapterVideos,
+    )
+
+    if (!dropTarget) {
+      toast.error(`Cannot place ${nodeType} here`)
+      return
+    }
+
+    const insertTarget = dropTargetToInsertTarget(dropTarget)
+    const node = insertNodeAtTarget(state, nodeType, insertTarget, toast)
+    if (!node) return
+
+    if (isFreePositionNode({ ...project, nodes: [...project.nodes, node] }, node.id)) {
+      applyEdit({ type: 'updatePositions', positions: [{ nodeId: node.id, x: flowPosition.x, y: flowPosition.y }] })
+    }
+  }, [project, chapters, chapterVideos, screenToFlowPosition, state, applyEdit, toast])
 
   const onNodesChangeWrapped = useCallback((changes: Parameters<typeof onNodesChange>[0]) => {
     onNodesChange(changes)
@@ -347,6 +419,13 @@ export function VisualFlowEditor({ state }: VisualFlowEditorProps) {
     selectNode(null)
   }, [selectEdge, selectNode])
 
+  const onInit = useCallback((instance: { fitView: () => void }) => {
+    if (!fitViewOnceRef.current) {
+      instance.fitView()
+      fitViewOnceRef.current = true
+    }
+  }, [])
+
   const styledEdges = useMemo(() => edges.map(e => ({
     ...e,
     style: {
@@ -377,7 +456,10 @@ export function VisualFlowEditor({ state }: VisualFlowEditorProps) {
           onSelectionChange={onSelectionChange}
           onNodeDrag={onNodeDrag}
           onNodeDragStop={onNodeDragStop}
+          onDragOver={onDragOver}
+          onDrop={onDrop}
           onPaneClick={() => { selectEdge(null) }}
+          onInit={onInit}
           selectionOnDrag
           panOnDrag={[1, 2]}
           multiSelectionKeyCode="Shift"
@@ -387,11 +469,11 @@ export function VisualFlowEditor({ state }: VisualFlowEditorProps) {
           edgesReconnectable
           deleteKeyCode={null}
           nodeTypes={nodeTypes}
-          fitView
           colorMode="dark"
         >
           <Background gap={20} color="#2e3032" />
           <Controls />
+          <VisualNodePalette />
           <MiniMap
             className="flow-minimap"
             nodeColor={n => FLOW_NODE_COLORS[(n.data as { nodeType: string }).nodeType] || '#666'}
@@ -399,5 +481,13 @@ export function VisualFlowEditor({ state }: VisualFlowEditorProps) {
         </ReactFlow>
       </div>
     </div>
+  )
+}
+
+export function VisualFlowEditor({ state }: VisualFlowEditorProps) {
+  return (
+    <ReactFlowProvider>
+      <VisualFlowEditorCanvas state={state} />
+    </ReactFlowProvider>
   )
 }
