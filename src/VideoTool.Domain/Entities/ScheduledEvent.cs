@@ -21,5 +21,15 @@ public class ScheduledEvent
     public string? WeeklyScheduleJson { get; set; }
     public int? LiveDurationMinutes { get; set; }
     public bool IsEnabled { get; set; } = true;
+    public string EventKind { get; set; } = "scheduled"; // scheduled, instant, on_demand
+    public string AccessMode { get; set; } = "open"; // open, selective
+    public string? RegistrationFormJson { get; set; }
+    public string RegistrationApprovalMode { get; set; } = "auto"; // auto, manual, crm_or_form
+    public string? CrmListKey { get; set; }
+    public string? AttendeeWebhookSecret { get; set; }
+    public string? PrivacyPolicyOverrideJson { get; set; }
+    public string? AccessOverrideJson { get; set; }
+    public int? DuplicatedFromId { get; set; }
+    public DateTime? OnDemandLiveStartUtc { get; set; }
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }

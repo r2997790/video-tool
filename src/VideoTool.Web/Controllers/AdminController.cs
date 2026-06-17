@@ -66,6 +66,8 @@ public class AdminController : ControllerBase
         if (dto.LeadWebhookUrl != null) config.LeadWebhookUrl = dto.LeadWebhookUrl;
         if (dto.LeadNotifyEmail != null) config.LeadNotifyEmail = dto.LeadNotifyEmail;
         if (dto.DemoChatSubtitle != null) config.DemoChatSubtitle = dto.DemoChatSubtitle;
+        if (dto.AttendeeWebhookUrl != null) config.AttendeeWebhookUrl = dto.AttendeeWebhookUrl;
+        if (dto.BlockedEmailDomainsJson != null) config.BlockedEmailDomainsJson = dto.BlockedEmailDomainsJson;
         config.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
         return Ok(config);
@@ -745,14 +747,6 @@ public class AdminController : ControllerBase
         projectData = JsonSerializer.Deserialize<object>(flow.ProjectDataJson),
     };
 
-    [HttpGet("events/{id:int}/preview")]
-    public async Task<IActionResult> PreviewEventOccurrence(int id, [FromServices] RecurrenceService recurrence)
-    {
-        var ev = await _db.ScheduledEvents.AsNoTracking().FirstOrDefaultAsync(e => e.Id == id);
-        if (ev == null) return NotFound();
-        var now = DateTime.UtcNow;
-        return Ok(BuildEventOccurrence(ev, recurrence, now));
-    }
 
     [HttpGet("analytics/chapters")]
     public Task<IActionResult> GetChapterAnalyticsLegacy() => GetFlowChapterAnalytics("default");
@@ -1102,68 +1096,6 @@ public class AdminController : ControllerBase
         return NoContent();
     }
 
-    [HttpGet("events")]
-    public async Task<IActionResult> GetEvents([FromServices] RecurrenceService recurrence)
-    {
-        var events = await _db.ScheduledEvents.OrderBy(e => e.StartsAtUtc).ToListAsync();
-        var now = DateTime.UtcNow;
-        return Ok(events.Select(ev => MapEventAdmin(ev, recurrence, now)));
-    }
-
-    [HttpPost("events")]
-    public async Task<IActionResult> CreateEvent([FromBody] ScheduledEventDto dto)
-    {
-        if (string.IsNullOrWhiteSpace(dto.Slug) || string.IsNullOrWhiteSpace(dto.Title))
-            return BadRequest(new { error = "Slug and title required" });
-
-        var slug = Slugify(dto.Slug);
-        if (await _db.ScheduledEvents.AnyAsync(e => e.Slug == slug))
-            return BadRequest(new { error = "Slug already in use" });
-
-        if (string.IsNullOrWhiteSpace(dto.FlowSlug))
-            return BadRequest(new { error = "Flow slug is required" });
-
-        var flowSlug = Slugify(dto.FlowSlug);
-        if (!await _db.FlowProjects.AnyAsync(f => f.Slug == flowSlug))
-            return BadRequest(new { error = "Flow not found" });
-
-        var ev = MapEventDto(new ScheduledEvent(), dto, slug, flowSlug);
-        _db.ScheduledEvents.Add(ev);
-        await _db.SaveChangesAsync();
-        return Ok(ev);
-    }
-
-    [HttpPut("events/{id:int}")]
-    public async Task<IActionResult> UpdateEvent(int id, [FromBody] ScheduledEventDto dto)
-    {
-        var ev = await _db.ScheduledEvents.FindAsync(id);
-        if (ev == null) return NotFound();
-
-        var slug = string.IsNullOrWhiteSpace(dto.Slug) ? ev.Slug : Slugify(dto.Slug);
-        if (await _db.ScheduledEvents.AnyAsync(e => e.Slug == slug && e.Id != id))
-            return BadRequest(new { error = "Slug already in use" });
-
-        var flowSlug = string.IsNullOrWhiteSpace(dto.FlowSlug) ? ev.FlowSlug : Slugify(dto.FlowSlug);
-        if (string.IsNullOrWhiteSpace(flowSlug))
-            return BadRequest(new { error = "Flow slug is required" });
-        if (!await _db.FlowProjects.AnyAsync(f => f.Slug == flowSlug))
-            return BadRequest(new { error = "Flow not found" });
-
-        MapEventDto(ev, dto, slug, flowSlug);
-        await _db.SaveChangesAsync();
-        return Ok(ev);
-    }
-
-    [HttpDelete("events/{id:int}")]
-    public async Task<IActionResult> DeleteEvent(int id)
-    {
-        var ev = await _db.ScheduledEvents.FindAsync(id);
-        if (ev == null) return NotFound();
-        _db.ScheduledEvents.Remove(ev);
-        await _db.SaveChangesAsync();
-        return NoContent();
-    }
-
     [HttpPost("upload")]
     [RequestSizeLimit(100_000_000)]
     public async Task<IActionResult> UploadMedia(IFormFile file)
@@ -1191,63 +1123,6 @@ public class AdminController : ControllerBase
             .Select(c => char.IsLetterOrDigit(c) ? c : '-')
             .ToArray()).Trim('-');
 
-    private static ScheduledEvent MapEventDto(ScheduledEvent ev, ScheduledEventDto dto, string slug, string flowSlug)
-    {
-        ev.Slug = slug;
-        ev.FlowSlug = flowSlug;
-        if (dto.Title != null) ev.Title = dto.Title;
-        if (dto.StartsAtUtc.HasValue) ev.StartsAtUtc = dto.StartsAtUtc.Value.ToUniversalTime();
-        ev.HoldingHeading = dto.HoldingHeading;
-        ev.HoldingMessage = dto.HoldingMessage;
-        ev.HoldingImageUrl = dto.HoldingImageUrl;
-        ev.HoldingVideoUrl = dto.HoldingVideoUrl;
-        if (dto.HoldingVideoType != null) ev.HoldingVideoType = dto.HoldingVideoType;
-        ev.DefaultChapterId = dto.DefaultChapterId;
-        if (dto.RecurrenceType != null) ev.RecurrenceType = dto.RecurrenceType;
-        ev.IntervalMinutes = dto.IntervalMinutes;
-        if (dto.RecurrenceStartUtc.HasValue) ev.RecurrenceStartUtc = dto.RecurrenceStartUtc.Value.ToUniversalTime();
-        if (dto.RecurrenceEndUtc.HasValue) ev.RecurrenceEndUtc = dto.RecurrenceEndUtc.Value.ToUniversalTime();
-        if (dto.Timezone != null) ev.Timezone = dto.Timezone;
-        ev.WeeklyScheduleJson = dto.WeeklyScheduleJson;
-        ev.LiveDurationMinutes = dto.LiveDurationMinutes;
-        ev.IsEnabled = dto.IsEnabled;
-        ev.UpdatedAt = DateTime.UtcNow;
-        return ev;
-    }
-
-    private static object MapEventAdmin(ScheduledEvent ev, RecurrenceService recurrence, DateTime now) =>
-        new
-        {
-            ev.Id,
-            ev.Slug,
-            ev.Title,
-            ev.StartsAtUtc,
-            ev.HoldingHeading,
-            ev.HoldingMessage,
-            ev.HoldingImageUrl,
-            ev.HoldingVideoUrl,
-            ev.HoldingVideoType,
-            ev.DefaultChapterId,
-            ev.FlowSlug,
-            ev.RecurrenceType,
-            ev.IntervalMinutes,
-            ev.RecurrenceStartUtc,
-            ev.RecurrenceEndUtc,
-            ev.Timezone,
-            ev.WeeklyScheduleJson,
-            ev.LiveDurationMinutes,
-            ev.IsEnabled,
-            ev.UpdatedAt,
-            occurrence = BuildEventOccurrence(ev, recurrence, now),
-        };
-
-    private static object BuildEventOccurrence(ScheduledEvent ev, RecurrenceService recurrence, DateTime now) => new
-    {
-        nextStartsAtUtc = recurrence.GetNextStartsAtUtc(ev, now),
-        isLive = recurrence.IsLive(ev, now),
-        serverNowUtc = now,
-    };
-
     public record DemoConfigUpdate(
         bool Autoplay, bool ShowDuration, bool ChatEnabled, bool AiEnabled,
         bool NotificationsEnabled, bool LiveChatEnabled, bool SeedChatEnabled,
@@ -1257,7 +1132,8 @@ public class AdminController : ControllerBase
         string? ThemeSurfaceColor, string? ThemeTextColor, string? ThemeFontFamily,
         string? ThemeBrandName, string? ThemeChatTitle, string? ThemeLogoUrl,
         bool SlackEnabled, string? SlackChannelId, bool TeamsEnabled, string? TeamsServiceUrl,
-        string? LeadWebhookUrl, string? LeadNotifyEmail, string? DemoChatSubtitle);
+        string? LeadWebhookUrl, string? LeadNotifyEmail, string? DemoChatSubtitle,
+        string? AttendeeWebhookUrl, string? BlockedEmailDomainsJson);
 
     public record ChapterDto(string? Slug, string? Name, string? Description, string? VideoLink, string? Duration, int SortOrder, bool IsLocked, bool? ShowDuration, string? GateJson);
     public record ChapterVideoDto(string? Title, string? VideoLink, string? Duration, int SortOrder = 0);
@@ -1275,10 +1151,4 @@ public class AdminController : ControllerBase
     public record PausePointDto(
         int? ChapterId, int TriggerAtSeconds, string? Prompt, string? FieldId, string? InputType,
         string? OptionsJson, bool Required, string? Placeholder, bool IsEnabled, int SortOrder);
-    public record ScheduledEventDto(
-        string? Slug, string? Title, DateTime? StartsAtUtc, string? HoldingHeading, string? HoldingMessage,
-        string? HoldingImageUrl, string? HoldingVideoUrl, string? HoldingVideoType,
-        int? DefaultChapterId, string? FlowSlug, string? RecurrenceType, int? IntervalMinutes,
-        DateTime? RecurrenceStartUtc, DateTime? RecurrenceEndUtc, string? Timezone,
-        string? WeeklyScheduleJson, int? LiveDurationMinutes, bool IsEnabled);
 }

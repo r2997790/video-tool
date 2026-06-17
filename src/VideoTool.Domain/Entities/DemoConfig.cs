@@ -29,5 +29,7 @@ public class DemoConfig
     public string? LeadWebhookUrl { get; set; }
     public string? LeadNotifyEmail { get; set; }
     public string? DemoChatSubtitle { get; set; }
+    public string? AttendeeWebhookUrl { get; set; }
+    public string? BlockedEmailDomainsJson { get; set; }
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }

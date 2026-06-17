@@ -159,7 +159,7 @@ function getAfterSegmentIndexForSelection(
   videos: AdminChapterVideo[],
 ): number | undefined {
   if (selectedNode.type === 'chapter') return undefined
-  const row = parseChapterBlock(project, chapterNode, videos)
+  const row = parseChapterBlockForLayout(project, chapterNode, videos)
   if (selectedNode.type === 'video') {
     const idx = row.segments.findIndex(s => s.kind === 'video' && s.nodeId === selectedNode.id)
     return idx >= 0 ? idx : undefined
@@ -291,7 +291,7 @@ function legacyVideoSegment(flow: FlowProject, chapterNode: FlowNode, videos: Ad
   }
 }
 
-function parseChapterBlock(
+export function parseChapterBlockForLayout(
   flow: FlowProject,
   chapterNode: FlowNode,
   videos: AdminChapterVideo[],
@@ -392,7 +392,7 @@ function appendUnvisitedTopLevelRows(
   for (const n of project.nodes) {
     if (visited.has(n.id)) continue
     if (isChapterHeader(n)) {
-      const row = parseChapterBlock(project, n, videos)
+      const row = parseChapterBlockForLayout(project, n, videos)
       markChapterRowVisited(row, visited)
       rows.push(row)
     } else if (isTopLevelStep(n)) {
@@ -425,7 +425,7 @@ export function projectToTimeline(
       if (!current) continue
 
       if (isChapterHeader(current)) {
-        const row = parseChapterBlock(project, current, videos)
+        const row = parseChapterBlockForLayout(project, current, videos)
         markChapterRowVisited(row, visited)
         rows.push(row)
         const exit = getChapterRowExit(project, row, videos)
@@ -659,7 +659,7 @@ export function reorderVideosInChapter(
   const chapterNode = project.nodes.find(n => n.id === chapterNodeId)
   if (!chapterNode) return project
 
-  const row = parseChapterBlock(project, chapterNode, videos)
+  const row = parseChapterBlockForLayout(project, chapterNode, videos)
   const videoSegs = row.segments.filter((s): s is TimelineVideoSegment => s.kind === 'video')
   const byId = new Map(videoSegs.map(s => [s.nodeId, s]))
   const reorderedVideos = orderedVideoIds.map(id => byId.get(id)).filter((s): s is TimelineVideoSegment => !!s)
@@ -688,7 +688,7 @@ function rewireChapterBlock(
   const chapterNode = project.nodes.find(n => n.id === chapterNodeId)
   if (!chapterNode) return project
 
-  const oldRow = parseChapterBlock(project, chapterNode, videos)
+  const oldRow = parseChapterBlockForLayout(project, chapterNode, videos)
   const oldInternal: FlowConnection[] = []
   let prev = chapterNodeId
   for (const seg of oldRow.segments) {
@@ -826,7 +826,7 @@ export function applyTimelineEdit(
       if (!node || !chapterNode || chapterNode.type !== 'chapter') return project
       if (!isChapterInterstitial(node) && node.type !== 'video') return project
 
-      const row = parseChapterBlock(project, chapterNode, videos)
+      const row = parseChapterBlockForLayout(project, chapterNode, videos)
       let fromNode: FlowNode | undefined = chapterNode
       if (edit.afterVideoNodeId) {
         const seg = row.segments.find(s => s.kind === 'video' && s.nodeId === edit.afterVideoNodeId)
@@ -842,7 +842,7 @@ export function applyTimelineEdit(
 
       let afterSegmentIndex: number | undefined
       if (edit.afterVideoNodeId) {
-        const row = parseChapterBlock(project, chapterNode, videos)
+        const row = parseChapterBlockForLayout(project, chapterNode, videos)
         const idx = row.segments.findIndex(
           s => s.kind === 'video' && s.nodeId === edit.afterVideoNodeId,
         )
@@ -869,7 +869,7 @@ export function applyTimelineEdit(
     case 'reorderChapterSegment': {
       const chapterNode = project.nodes.find(n => n.id === edit.chapterNodeId)
       if (!chapterNode) return project
-      const row = parseChapterBlock(project, chapterNode, videos)
+      const row = parseChapterBlockForLayout(project, chapterNode, videos)
       const segmentIds = row.segments.map(s => (s.kind === 'video' ? s.nodeId : s.node.id))
       const oldIndex = segmentIds.indexOf(edit.segmentNodeId)
       const newIndex = segmentIds.indexOf(edit.overSegmentNodeId)
@@ -978,7 +978,7 @@ export function insertNodeInTimeline(
     next.nodes.push(node)
     const chapterNode = next.nodes.find(n => n.id === target.chapterNodeId)
     if (!chapterNode) return next
-    const segs = parseChapterBlock(next, chapterNode, videos).segments
+    const segs = parseChapterBlockForLayout(next, chapterNode, videos).segments
     const idx = target.afterSegmentIndex ?? segs.length - 1
     const seg = segs[idx]
     const fromId = seg?.kind === 'video' ? seg.nodeId : chapterNode.id
@@ -995,7 +995,7 @@ export function insertNodeInTimeline(
     next.nodes.push(node)
     const chapterNode = next.nodes.find(n => n.id === target.chapterNodeId)
     if (!chapterNode) return next
-    const segs = parseChapterBlock(next, chapterNode, videos).segments
+    const segs = parseChapterBlockForLayout(next, chapterNode, videos).segments
     const idx = target.afterSegmentIndex ?? segs.length - 1
     const seg = segs[idx]
     const fromId = seg?.kind === 'video' ? seg.nodeId : chapterNode.id

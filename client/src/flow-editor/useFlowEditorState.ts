@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from '../api'
 import type { AdminChapter, AdminChapterVideo, FlowNode, FlowProject, ScheduledEvent } from '../types'
+import { applyFlowEdit, type FlowEdit } from './applyFlowEdit'
 import { emptyProject } from './flowSchema'
 import { migrateLegacyPlaybackToFlow } from './flowMigration'
 import { ensureLegacyChapterVideos } from './flowTimeline'
@@ -9,6 +10,8 @@ import { validateFlowProject } from './validateFlow'
 const VIEW_KEY = 'videotool_flow_editor_view'
 
 export type FlowEditorView = 'timeline' | 'visual'
+
+export type SelectedEdge = { from: string; to: string } | null
 
 export function useFlowEditorState(flowSlug: string) {
   const [loading, setLoading] = useState(true)
@@ -20,9 +23,16 @@ export function useFlowEditorState(flowSlug: string) {
   const [events, setEvents] = useState<ScheduledEvent[]>([])
   const [flowEnabled, setFlowEnabled] = useState(false)
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
+  const [selectedEdge, setSelectedEdge] = useState<SelectedEdge>(null)
+  const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([])
   const [view, setView] = useState<FlowEditorView>(() =>
     (localStorage.getItem(VIEW_KEY) as FlowEditorView) || 'timeline')
   const [saving, setSaving] = useState(false)
+
+  const editContext = useMemo(
+    () => ({ chapters, chapterVideos }),
+    [chapters, chapterVideos],
+  )
 
   const selectedNode = useMemo(
     () => project.nodes.find(n => n.id === selectedNodeId) ?? null,
@@ -75,6 +85,13 @@ export function useFlowEditorState(flowSlug: string) {
     setProject({ ...next, projectName })
   }, [projectName])
 
+  const applyEdit = useCallback((edit: FlowEdit) => {
+    setProject(prev => {
+      const next = applyFlowEdit(prev, edit, editContext)
+      return { ...next, projectName }
+    })
+  }, [editContext, projectName])
+
   const save = useCallback(async (force = false) => {
     const warnings = validateFlowProject(project, {
       chapterCount: chapters.length,
@@ -102,6 +119,18 @@ export function useFlowEditorState(flowSlug: string) {
     setSelectedNodeId(node?.id ?? null)
   }, [])
 
+  const selectEdge = useCallback((edge: SelectedEdge) => {
+    setSelectedEdge(edge)
+  }, [])
+
+  const importDocument = useCallback((nextProject: FlowProject, nextName?: string) => {
+    if (nextName) setProjectName(nextName)
+    setProject({ ...nextProject, projectName: nextName ?? projectName })
+    setSelectedNodeId(null)
+    setSelectedEdge(null)
+    setSelectedNodeIds([])
+  }, [projectName])
+
   return {
     loading,
     flowSlug,
@@ -109,13 +138,19 @@ export function useFlowEditorState(flowSlug: string) {
     setProjectName,
     project,
     updateProject,
+    applyEdit,
+    editContext,
     chapters,
     chapterVideos,
     events,
     flowEnabled,
     selectedNode,
     selectedNodeId,
+    selectedNodeIds,
+    setSelectedNodeIds,
+    selectedEdge,
     selectNode,
+    selectEdge,
     view,
     setViewMode,
     dirty,
@@ -123,6 +158,7 @@ export function useFlowEditorState(flowSlug: string) {
     save,
     reload,
     refreshVideos,
+    importDocument,
   }
 }
 

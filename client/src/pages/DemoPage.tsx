@@ -63,6 +63,15 @@ export function DemoPage() {
   const aiChatRunRef = useRef(0)
   const sessionId = getSessionId()
   const [searchParams] = useSearchParams()
+  const eventSlug = searchParams.get('event')
+  const viewerEmail = typeof localStorage !== 'undefined' ? localStorage.getItem(`videotool_event_email_${eventSlug ?? ''}`) ?? undefined : undefined
+  const eventOccurrenceRef = useRef<string | undefined>(undefined)
+
+  const eventCtx = useMemo(() => ({
+    eventSlug: eventSlug ?? undefined,
+    eventOccurrenceStartUtc: eventOccurrenceRef.current,
+    viewerEmail,
+  }), [eventSlug, viewerEmail])
 
   const logEvent = useCallback((eventType: string, extra?: { chapterId?: number; toasterId?: number; data?: Record<string, unknown> }) => {
     api.logEvent(sessionId, eventType, {
@@ -70,8 +79,9 @@ export function DemoPage() {
       toasterId: extra?.toasterId,
       dataJson: extra?.data ? JSON.stringify(extra.data) : undefined,
       flowSlug,
+      ...eventCtx,
     }).catch(() => {})
-  }, [sessionId, flowSlug])
+  }, [sessionId, flowSlug, eventCtx])
 
   const persistLead = useCallback((
     source: string,
@@ -112,7 +122,12 @@ export function DemoPage() {
 
         if (eventParam) {
           try {
-            const ev = await api.getScheduledEvent(eventParam)
+            const ev = await api.getScheduledEvent(eventParam, sessionId, viewerEmail)
+            eventOccurrenceRef.current = ev.nextStartsAtUtc ?? ev.startsAtUtc
+            if (ev.accessDenied) {
+              window.location.replace(`/event/${eventParam}`)
+              return
+            }
             if (ev.flowSlug && ev.flowSlug !== flowSlug) {
               const q = new URLSearchParams(searchParams)
               q.delete('flow')
@@ -225,7 +240,10 @@ export function DemoPage() {
     const mode = (flowNode.parameters.mode as string) || 'inline'
     const slug = flowNode.parameters.eventSlug as string
     if (mode === 'slug' && slug) {
-      api.getScheduledEvent(slug).then(setFlowEventData).catch(() => setFlowEventData(null))
+      api.getScheduledEvent(slug, sessionId).then(ev => {
+        eventOccurrenceRef.current = ev.nextStartsAtUtc ?? ev.startsAtUtc
+        setFlowEventData(ev)
+      }).catch(() => setFlowEventData(null))
     } else {
       setFlowEventData(null)
     }
@@ -262,10 +280,10 @@ export function DemoPage() {
     if (seconds > maxWatchedRef.current) {
       maxWatchedRef.current = seconds
       if (activeId) {
-        api.postHeartbeat(sessionId, activeId, seconds).catch(() => {})
+        api.postHeartbeat(sessionId, activeId, seconds, eventCtx).catch(() => {})
       }
     }
-  }, [activeId, sessionId])
+  }, [activeId, sessionId, eventCtx])
 
   const advanceFlow = useCallback((currentNode: FlowNode, answers: Record<string, string>) => {
     if (!data?.flow?.projectData) { setFlowNode(null); return }
@@ -700,8 +718,7 @@ export function DemoPage() {
         </div>
 
         <div className="vd-now-playing-bar">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
-            <button type="button" className="vd-mobile-tab-btn" onClick={() => setChaptersOpen(true)}>Chapters</button>
+          <div className="vd-now-playing-meta">
             <span className="vd-np-eyebrow">Now playing</span>
             <span className="vd-np-title">{activeVideo?.name || activeChapter?.name}</span>
           </div>
@@ -712,18 +729,42 @@ export function DemoPage() {
       </main>
 
       {config.chatEnabled && (
-        <>
-          <aside className={`vd-sidebar vd-chat-panel${chatOpen ? ' is-open' : ''}`}>
-            {chatPanel}
-          </aside>
-          <button type="button" className="vd-chat-fab" onClick={() => setChatOpen(v => !v)} aria-label="Open chat">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <aside className={`vd-sidebar vd-chat-panel${chatOpen ? ' is-open' : ''}`}>
+          {chatPanel}
+        </aside>
+      )}
+
+      <nav className="vd-mobile-bottom-nav" aria-label="Demo navigation">
+        <button
+          type="button"
+          className={`vd-bottom-nav-btn${chaptersOpen ? ' is-active' : ''}`}
+          onClick={() => { setChaptersOpen(v => !v); if (!chaptersOpen) setChatOpen(false) }}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            <path d="M4 6h16M4 12h16M4 18h10" />
+          </svg>
+          <span>Chapters</span>
+        </button>
+        {config.chatEnabled && (
+          <button
+            type="button"
+            className={`vd-bottom-nav-btn${chatOpen ? ' is-active' : ''}`}
+            onClick={() => { setChatOpen(v => !v); if (!chatOpen) setChaptersOpen(false) }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
             </svg>
+            <span>Chat</span>
           </button>
-          {chatOpen && <div className="vd-drawer-backdrop" onClick={() => setChatOpen(false)} aria-hidden="true" />}
-          {chaptersOpen && <div className="vd-drawer-backdrop" onClick={() => setChaptersOpen(false)} aria-hidden="true" />}
-        </>
+        )}
+      </nav>
+
+      {(chatOpen || chaptersOpen) && (
+        <div
+          className="vd-drawer-backdrop"
+          onClick={() => { setChatOpen(false); setChaptersOpen(false) }}
+          aria-hidden="true"
+        />
       )}
     </div>
   )

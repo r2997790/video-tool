@@ -199,6 +199,97 @@ public static class SchemaMigrator
             await EnsureIndexAsync(conn, "IX_ChapterVideos_ChapterId",
                 """CREATE INDEX IF NOT EXISTS "IX_ChapterVideos_ChapterId" ON "ChapterVideos" ("ChapterId");""");
             await BackfillChapterVideosAsync(conn);
+
+            // Events platform extensions
+            await EnsureColumnAsync(conn, "ScheduledEvents", "EventKind", "TEXT NOT NULL DEFAULT 'scheduled'");
+            await EnsureColumnAsync(conn, "ScheduledEvents", "AccessMode", "TEXT NOT NULL DEFAULT 'open'");
+            await EnsureColumnAsync(conn, "ScheduledEvents", "RegistrationFormJson", "TEXT NULL");
+            await EnsureColumnAsync(conn, "ScheduledEvents", "RegistrationApprovalMode", "TEXT NOT NULL DEFAULT 'auto'");
+            await EnsureColumnAsync(conn, "ScheduledEvents", "CrmListKey", "TEXT NULL");
+            await EnsureColumnAsync(conn, "ScheduledEvents", "AttendeeWebhookSecret", "TEXT NULL");
+            await EnsureColumnAsync(conn, "ScheduledEvents", "PrivacyPolicyOverrideJson", "TEXT NULL");
+            await EnsureColumnAsync(conn, "ScheduledEvents", "AccessOverrideJson", "TEXT NULL");
+            await EnsureColumnAsync(conn, "ScheduledEvents", "DuplicatedFromId", "INTEGER NULL");
+            await EnsureColumnAsync(conn, "ScheduledEvents", "OnDemandLiveStartUtc", "TEXT NULL");
+
+            await EnsureColumnAsync(conn, "DemoConfigs", "AttendeeWebhookUrl", "TEXT NULL");
+            await EnsureColumnAsync(conn, "DemoConfigs", "BlockedEmailDomainsJson", "TEXT NULL");
+
+            await EnsureTableAsync(conn, "EventAttendees", """
+                CREATE TABLE IF NOT EXISTS "EventAttendees" (
+                    "Id" INTEGER NOT NULL CONSTRAINT "PK_EventAttendees" PRIMARY KEY AUTOINCREMENT,
+                    "EventId" INTEGER NOT NULL,
+                    "Email" TEXT NOT NULL,
+                    "Name" TEXT NULL,
+                    "Status" TEXT NOT NULL DEFAULT 'pending',
+                    "Source" TEXT NOT NULL DEFAULT 'manual',
+                    "RejectedReason" TEXT NULL,
+                    "AnswersJson" TEXT NULL,
+                    "ConsentRegion" TEXT NULL,
+                    "ConsentGivenAt" TEXT NULL,
+                    "ConsentNoticeVersion" TEXT NULL,
+                    "CreatedAt" TEXT NOT NULL,
+                    "UpdatedAt" TEXT NOT NULL
+                );
+                """);
+            await EnsureIndexAsync(conn, "IX_EventAttendees_EventId_Email",
+                """CREATE INDEX IF NOT EXISTS "IX_EventAttendees_EventId_Email" ON "EventAttendees" ("EventId", "Email");""");
+
+            await EnsureTableAsync(conn, "GlobalAccessListEntries", """
+                CREATE TABLE IF NOT EXISTS "GlobalAccessListEntries" (
+                    "Id" INTEGER NOT NULL CONSTRAINT "PK_GlobalAccessListEntries" PRIMARY KEY AUTOINCREMENT,
+                    "ListType" TEXT NOT NULL DEFAULT 'blacklist',
+                    "MatchType" TEXT NOT NULL DEFAULT 'email',
+                    "Value" TEXT NOT NULL,
+                    "Note" TEXT NULL,
+                    "CreatedAt" TEXT NOT NULL
+                );
+                """);
+            await EnsureIndexAsync(conn, "IX_GlobalAccessListEntries_ListType_MatchType_Value",
+                """CREATE INDEX IF NOT EXISTS "IX_GlobalAccessListEntries_ListType_MatchType_Value" ON "GlobalAccessListEntries" ("ListType", "MatchType", "Value");""");
+
+            await EnsureTableAsync(conn, "PrivacyPolicyRegions", """
+                CREATE TABLE IF NOT EXISTS "PrivacyPolicyRegions" (
+                    "Id" INTEGER NOT NULL CONSTRAINT "PK_PrivacyPolicyRegions" PRIMARY KEY AUTOINCREMENT,
+                    "RegionCode" TEXT NOT NULL,
+                    "NoticeHtml" TEXT NOT NULL DEFAULT '',
+                    "ConsentRequired" INTEGER NOT NULL DEFAULT 0,
+                    "PolicyUrl" TEXT NULL,
+                    "UpdatedAt" TEXT NOT NULL
+                );
+                """);
+            await EnsureIndexAsync(conn, "IX_PrivacyPolicyRegions_RegionCode",
+                """CREATE UNIQUE INDEX IF NOT EXISTS "IX_PrivacyPolicyRegions_RegionCode" ON "PrivacyPolicyRegions" ("RegionCode");""");
+
+            await EnsureTableAsync(conn, "EventSessionLinks", """
+                CREATE TABLE IF NOT EXISTS "EventSessionLinks" (
+                    "Id" INTEGER NOT NULL CONSTRAINT "PK_EventSessionLinks" PRIMARY KEY AUTOINCREMENT,
+                    "SessionId" TEXT NOT NULL,
+                    "EventSlug" TEXT NOT NULL,
+                    "EventOccurrenceStartUtc" TEXT NULL,
+                    "RegisteredAttendeeId" INTEGER NULL,
+                    "ViewerEmail" TEXT NULL,
+                    "CreatedAt" TEXT NOT NULL,
+                    "UpdatedAt" TEXT NOT NULL
+                );
+                """);
+            await EnsureIndexAsync(conn, "IX_EventSessionLinks_SessionId_EventSlug",
+                """CREATE UNIQUE INDEX IF NOT EXISTS "IX_EventSessionLinks_SessionId_EventSlug" ON "EventSessionLinks" ("SessionId", "EventSlug");""");
+
+            await EnsureTableAsync(conn, "EventOccurrenceLogs", """
+                CREATE TABLE IF NOT EXISTS "EventOccurrenceLogs" (
+                    "Id" INTEGER NOT NULL CONSTRAINT "PK_EventOccurrenceLogs" PRIMARY KEY AUTOINCREMENT,
+                    "EventId" INTEGER NOT NULL,
+                    "OccurrenceStartUtc" TEXT NOT NULL,
+                    "OccurrenceEndUtc" TEXT NULL,
+                    "TriggerSource" TEXT NOT NULL DEFAULT 'scheduled',
+                    "CreatedAt" TEXT NOT NULL
+                );
+                """);
+            await EnsureIndexAsync(conn, "IX_EventOccurrenceLogs_EventId",
+                """CREATE INDEX IF NOT EXISTS "IX_EventOccurrenceLogs_EventId" ON "EventOccurrenceLogs" ("EventId");""");
+
+            await SeedDefaultPrivacyRegionsAsync(conn);
         }
         finally
         {
@@ -294,6 +385,25 @@ public static class SchemaMigrator
             SELECT c."Id", c."Name", c."VideoLink", c."Duration", 1
             FROM "Chapters" c
             WHERE c."VideoLink" IS NOT NULL AND c."VideoLink" != '';
+            """;
+        await cmd.ExecuteNonQueryAsync();
+    }
+
+    private static async Task SeedDefaultPrivacyRegionsAsync(System.Data.Common.DbConnection conn)
+    {
+        await using var check = conn.CreateCommand();
+        check.CommandText = """SELECT COUNT(*) FROM "PrivacyPolicyRegions";""";
+        var count = Convert.ToInt32(await check.ExecuteScalarAsync());
+        if (count > 0) return;
+
+        var now = DateTime.UtcNow.ToString("o");
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = $"""
+            INSERT INTO "PrivacyPolicyRegions" ("RegionCode", "NoticeHtml", "ConsentRequired", "PolicyUrl", "UpdatedAt") VALUES
+            ('DEFAULT', 'By submitting this form you agree to our privacy policy and consent to us storing your information for event access.', 0, NULL, '{now}'),
+            ('EU', 'Under GDPR we need your explicit consent to process your personal data for this event. You may withdraw consent at any time.', 1, NULL, '{now}'),
+            ('UK', 'Under UK GDPR we need your explicit consent to process your personal data for this event. You may withdraw consent at any time.', 1, NULL, '{now}'),
+            ('US', 'By submitting this form you agree to our privacy policy. Your information will be used to manage event access.', 0, NULL, '{now}');
             """;
         await cmd.ExecuteNonQueryAsync();
     }

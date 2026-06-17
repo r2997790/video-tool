@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "exportedAt": "2026-06-17T00:00:00.000Z",
+  "projectName": "Event countdown",
+  "project": {
+    "projectName": "Event countdown",
+    "nodes": [
+      {
+        "id": "event-1",
+        "type": "event",
+        "name": "Live event",
+        "parameters": {
+          "mode": "inline",
+          "title": "Live event",
+          "startsAtUtc": "2026-12-31T18:00:00.000Z",
+          "holdingHeading": "Starting soon",
+          "holdingMessage": "The broadcast will begin shortly.",
+          "holdingImageUrl": "",
+          "holdingVideoUrl": "",
+          "holdingVideoType": "none",
+          "defaultChapterId": 1
+        },
+        "x": 80,
+        "y": 80
+      },
+      {
+        "id": "chapter-1",
+        "type": "chapter",
+        "name": "Broadcast",
+        "parameters": { "chapterId": 1 },
+        "x": 320,
+        "y": 80
+      },
+      {
+        "id": "video-1",
+        "type": "video",
+        "name": "Main broadcast",
+        "parameters": { "chapterId": 1, "videoId": 1 },
+        "x": 40,
+        "y": 60
+      },
+      {
+        "id": "outro-1",
+        "type": "outro",
+        "name": "Thank you",
+        "parameters": {
+          "heading": "Thanks for watching",
+          "subtext": "",
+          "questions": []
+        },
+        "x": 560,
+        "y": 80
+      }
+    ],
+    "connections": [
+      { "from": "event-1", "to": "chapter-1" },
+      { "from": "chapter-1", "to": "video-1" },
+      { "from": "video-1", "to": "outro-1" }
+    ]
+  },
+  "metadata": {
+    "description": "Scheduled event holding screen before chapter playback.",
+    "tags": ["event", "live"]
+  }
+}

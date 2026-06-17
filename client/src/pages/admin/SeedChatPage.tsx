@@ -4,6 +4,7 @@ import { api } from '../../api'
 import { AdminFieldLabel } from '../../components/AdminFieldLabel'
 import { ConfirmModal } from '../../components/ConfirmModal'
 import { HELP } from '../../adminHelpText'
+import { FlowWorkflowNav } from '../../flow-editor/FlowWorkflowNav'
 
 interface SeedMsg {
   id: number
@@ -36,6 +37,7 @@ export function SeedChatPage() {
 
   return (
     <>
+      <FlowWorkflowNav />
       <h2>Seed Chat Messages</h2>
       <p style={{ color: '#9b9d9f', fontSize: 13, marginBottom: 16 }}>
         These messages appear when Seed Chat is enabled in settings.

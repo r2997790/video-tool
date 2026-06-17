@@ -217,12 +217,99 @@ export interface ScheduledEvent {
   weeklyScheduleJson?: string | null
   liveDurationMinutes?: number | null
   isEnabled: boolean
+  eventKind?: string
+  accessMode?: string
+  registrationFormJson?: string | null
+  registrationApprovalMode?: string
+  crmListKey?: string | null
+  attendeeWebhookSecret?: string | null
+  privacyPolicyOverrideJson?: string | null
+  accessOverrideJson?: string | null
+  duplicatedFromId?: number | null
+  onDemandLiveStartUtc?: string | null
   updatedAt?: string
-  occurrence?: {
-    nextStartsAtUtc?: string | null
-    isLive: boolean
-    serverNowUtc: string
-  }
+  occurrence?: EventOccurrencePreview
+  metrics?: EventMetrics
+}
+
+export interface EventMetrics {
+  registeredCount: number
+  approvedCount: number
+  attendeeCount: number
+  totalWatchSeconds: number
+  chatMessages?: number
+  engagementScore: number
+  displayStatus: string
+  recurrenceLabel: string
+  nextStartsAtUtc?: string | null
+  isLive: boolean
+}
+
+export interface EventsSummary {
+  totalEvents: number
+  activeEvents: number
+  totalAttendees: number
+  totalWatchSeconds: number
+  engagementScore: number
+}
+
+export interface EventOccurrencePreview {
+  nextStartsAtUtc?: string | null
+  isLive: boolean
+  displayStatus?: string
+  serverNowUtc: string
+}
+
+export interface EventAttendee {
+  id: number
+  eventId: number
+  email: string
+  name?: string | null
+  status: 'pending' | 'approved' | 'rejected'
+  source: string
+  rejectedReason?: string | null
+  answersJson?: string | null
+  consentRegion?: string | null
+  consentGivenAt?: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface AccessListEntry {
+  id: number
+  listType: 'whitelist' | 'blacklist'
+  matchType: 'email' | 'domain'
+  value: string
+  note?: string | null
+  createdAt: string
+}
+
+export interface PrivacyPolicyRegion {
+  id: number
+  regionCode: string
+  noticeHtml: string
+  consentRequired: boolean
+  policyUrl?: string | null
+  updatedAt: string
+}
+
+export interface EventPrivacyNotice {
+  region: string
+  noticeHtml: string
+  consentRequired: boolean
+  policyUrl?: string | null
+}
+
+export interface EventAnalyticsResponse {
+  metrics: EventMetrics
+  occurrences: Array<{
+    id: number
+    eventId: number
+    occurrenceStartUtc: string
+    occurrenceEndUtc?: string | null
+    triggerSource: string
+    createdAt: string
+  }>
 }
 
 export interface ScheduledEventPublic {
@@ -241,6 +328,12 @@ export interface ScheduledEventPublic {
   holdingVideoValue: string
   defaultChapterId?: number | null
   recurrenceType?: string
+  accessMode?: string
+  requiresRegistration?: boolean
+  accessDenied?: boolean
+  attendeeStatus?: string | null
+  registrationForm?: Gate | null
+  registrationApprovalMode?: string
 }
 
 export interface LeadSubmissionRow {

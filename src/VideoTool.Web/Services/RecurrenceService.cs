@@ -42,6 +42,13 @@ public class RecurrenceService
 
     public DateTime? GetCurrentOccurrenceUtc(ScheduledEvent ev, DateTime nowUtc)
     {
+        var kind = NormalizeKind(ev.EventKind);
+        if (kind == "on_demand" && ev.OnDemandLiveStartUtc.HasValue)
+            return IsWithinLiveWindow(ev, ev.OnDemandLiveStartUtc.Value, nowUtc) ? ev.OnDemandLiveStartUtc : null;
+
+        if (kind == "instant")
+            return nowUtc >= ev.StartsAtUtc && IsWithinLiveWindow(ev, ev.StartsAtUtc, nowUtc) ? ev.StartsAtUtc : null;
+
         var type = NormalizeType(ev.RecurrenceType);
         return type switch
         {
@@ -51,7 +58,19 @@ public class RecurrenceService
         };
     }
 
-    public bool IsLive(ScheduledEvent ev, DateTime nowUtc) => GetCurrentOccurrenceUtc(ev, nowUtc) != null;
+    public bool IsLive(ScheduledEvent ev, DateTime nowUtc)
+    {
+        if (!ev.IsEnabled) return false;
+
+        var kind = NormalizeKind(ev.EventKind);
+        if (kind == "on_demand" && ev.OnDemandLiveStartUtc.HasValue)
+            return IsWithinLiveWindow(ev, ev.OnDemandLiveStartUtc.Value, nowUtc);
+
+        if (kind == "instant")
+            return IsWithinLiveWindow(ev, ev.StartsAtUtc, nowUtc);
+
+        return GetCurrentOccurrenceUtc(ev, nowUtc) != null;
+    }
 
     public DateTime? GetNextStartsAtUtc(ScheduledEvent ev, DateTime nowUtc)
     {
@@ -66,6 +85,72 @@ public class RecurrenceService
             return ev.StartsAtUtc;
 
         return null;
+    }
+
+    public DateTime? GetLastOccurrenceUtc(ScheduledEvent ev, DateTime nowUtc)
+    {
+        if (NormalizeKind(ev.EventKind) == "on_demand" && ev.OnDemandLiveStartUtc.HasValue)
+            return ev.OnDemandLiveStartUtc;
+
+        if (NormalizeKind(ev.EventKind) == "instant")
+            return ev.StartsAtUtc <= nowUtc ? ev.StartsAtUtc : null;
+
+        var type = NormalizeType(ev.RecurrenceType);
+        if (type == "none")
+            return ev.StartsAtUtc <= nowUtc ? ev.StartsAtUtc : null;
+
+        // Walk back from now to find most recent occurrence
+        var probe = nowUtc;
+        DateTime? last = null;
+        for (var i = 0; i < 500; i++)
+        {
+            var current = GetCurrentOccurrenceUtc(ev, probe);
+            if (current.HasValue)
+            {
+                last = current;
+                break;
+            }
+            var prev = GetPreviousOccurrenceUtc(ev, probe);
+            if (!prev.HasValue) break;
+            last = prev;
+            probe = prev.Value.AddSeconds(-1);
+            if (i > 0 && prev == last) break;
+        }
+        return last;
+    }
+
+    public string GetEventDisplayStatus(ScheduledEvent ev, DateTime nowUtc)
+    {
+        if (!ev.IsEnabled) return "inactive";
+
+        if (IsLive(ev, nowUtc))
+        {
+            if (NormalizeKind(ev.EventKind) == "instant") return "instant";
+            return "live";
+        }
+
+        var next = GetNextOccurrenceUtc(ev, nowUtc);
+        if (next.HasValue || (NormalizeType(ev.RecurrenceType) == "none" && nowUtc < ev.StartsAtUtc))
+            return "programmed";
+
+        if (NormalizeKind(ev.EventKind) == "on_demand" && !ev.OnDemandLiveStartUtc.HasValue)
+            return "programmed";
+
+        return "past";
+    }
+
+    private static string NormalizeKind(string? kind) =>
+        string.IsNullOrWhiteSpace(kind) ? "scheduled" : kind.Trim().ToLowerInvariant();
+
+    private DateTime? GetPreviousOccurrenceUtc(ScheduledEvent ev, DateTime nowUtc)
+    {
+        var type = NormalizeType(ev.RecurrenceType);
+        return type switch
+        {
+            "interval" => GetPreviousIntervalOccurrence(ev, nowUtc),
+            "weekly" => GetPreviousWeeklyOccurrence(ev, nowUtc),
+            _ => ev.StartsAtUtc < nowUtc ? ev.StartsAtUtc : null,
+        };
     }
 
     private static string NormalizeType(string? type) =>
@@ -134,6 +219,47 @@ public class RecurrenceService
         if (end.HasValue && currentStart > end.Value) return null;
 
         return IsWithinLiveWindow(ev, currentStart, nowUtc) ? currentStart : null;
+    }
+
+    private static DateTime? GetPreviousIntervalOccurrence(ScheduledEvent ev, DateTime nowUtc)
+    {
+        var interval = ev.IntervalMinutes ?? 0;
+        if (interval <= 0) return null;
+
+        var anchor = EnsureUtc(ev.RecurrenceStartUtc ?? ev.StartsAtUtc);
+        if (nowUtc < anchor) return null;
+
+        var elapsed = (nowUtc - anchor).TotalMinutes;
+        var idx = (long)Math.Floor(elapsed / interval);
+        if (idx < 0) return null;
+        return anchor.AddMinutes(idx * interval);
+    }
+
+    private static DateTime? GetPreviousWeeklyOccurrence(ScheduledEvent ev, DateTime nowUtc)
+    {
+        var schedule = ParseWeeklySchedule(ev.WeeklyScheduleJson);
+        if (schedule.Days.Count == 0 || schedule.Times.Count == 0) return null;
+
+        var tz = ResolveTimeZone(ev.Timezone);
+        var localNow = TimeZoneInfo.ConvertTimeFromUtc(nowUtc, tz);
+
+        for (var dayOffset = 0; dayOffset >= -14; dayOffset--)
+        {
+            var day = localNow.Date.AddDays(dayOffset);
+            var dow = day.DayOfWeek;
+            if (!schedule.Days.Any(d => DayMap.TryGetValue(d, out var mapped) && mapped == dow))
+                continue;
+
+            foreach (var time in schedule.Times.OrderByDescending(t => t))
+            {
+                if (!TryParseTime(time, out var hour, out var minute)) continue;
+                var localSlot = day.AddHours(hour).AddMinutes(minute);
+                var slotUtc = TimeZoneInfo.ConvertTimeToUtc(localSlot, tz);
+                if (slotUtc <= nowUtc) return slotUtc;
+            }
+        }
+
+        return null;
     }
 
     private static DateTime? GetNextWeeklyOccurrence(ScheduledEvent ev, DateTime nowUtc, bool strictlyAfter)

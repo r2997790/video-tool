@@ -346,6 +346,45 @@ a { color: var(--accent-site); }
   background: var(--accent-site); color: #000; border: none; cursor: pointer;
   box-shadow: 0 4px 20px rgba(0,0,0,0.4); align-items: center; justify-content: center;
 }
+.vd-mobile-bottom-nav {
+  display: none;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  background: var(--vd-surface, #1a1b1d);
+  border-top: 1px solid #26282a;
+  padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0px));
+  gap: 8px;
+}
+.vd-bottom-nav-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 6px;
+  background: #111213;
+  border: 1px solid #2e3032;
+  border-radius: 8px;
+  color: #9b9d9f;
+  font-size: 11px;
+  cursor: pointer;
+}
+.vd-bottom-nav-btn.is-active {
+  color: #fff;
+  border-color: var(--accent-site);
+  background: rgba(119, 192, 67, 0.1);
+}
+.vd-now-playing-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
 .vd-drawer-backdrop {
   display: none;
   position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 35;
@@ -365,11 +404,11 @@ a { color: var(--accent-site); }
 @media (min-width: 769px) {
   .vd-chapters-panel { display: flex !important; position: static; max-height: none; border-radius: 0; }
   .vd-chat-panel { display: flex !important; position: static; max-height: none; border-radius: 0; }
-  .vd-chat-fab, .vd-drawer-backdrop, .vd-mobile-close, .vd-mobile-tab-btn { display: none !important; }
+  .vd-chat-fab, .vd-drawer-backdrop, .vd-mobile-close, .vd-mobile-tab-btn, .vd-mobile-bottom-nav { display: none !important; }
 }
 
 @media (max-width: 768px) {
-  .vd-shell { flex-direction: column; height: auto; min-height: 100dvh; overflow: visible; }
+  .vd-shell { flex-direction: column; height: auto; min-height: 100dvh; overflow: visible; padding-bottom: 72px; }
   .vd-chapters-panel {
     display: none; position: fixed; left: 0; right: 0; bottom: 0; z-index: 36;
     width: 100%; max-height: 70dvh; border-right: none; border-top: 1px solid #26282a;
@@ -382,7 +421,7 @@ a { color: var(--accent-site); }
     border-radius: 16px 16px 0 0;
   }
   .vd-chat-panel.is-open { display: flex; }
-  .vd-chat-fab { display: flex; }
+  .vd-mobile-bottom-nav { display: flex; }
   .vd-drawer-backdrop { display: block; }
   .vd-mobile-close, .vd-mobile-tab-btn { display: inline-block; }
   .vd-sidebar-head { position: relative; padding-right: 36px; }

@@ -165,7 +165,7 @@ function StepRow({
 }
 
 export function TimelineEditor({ state }: TimelineEditorProps) {
-  const { project, updateProject, chapters, chapterVideos, selectedNodeId, selectNode } = state
+  const { project, chapters, chapterVideos, selectedNodeId, selectNode } = state
   const [activeDragId, setActiveDragId] = useState<string | null>(null)
 
   const timeline = useMemo(
@@ -178,8 +178,8 @@ export function TimelineEditor({ state }: TimelineEditorProps) {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
 
   const applyEdit = useCallback((edit: Parameters<typeof applyTimelineEdit>[1]) => {
-    updateProject(applyTimelineEdit(project, edit, chapters, chapterVideos))
-  }, [project, updateProject, chapters, chapterVideos])
+    state.applyEdit(edit)
+  }, [state])
 
   const deleteNode = useCallback((nodeId: string) => {
     applyEdit({ type: 'remove', nodeId })
@@ -460,7 +460,7 @@ export function addNodeWithContext(
   type: FlowNode['type'],
   toast: { error: (msg: string) => void },
 ): void {
-  const { project, updateProject, chapters, chapterVideos, selectedNode, selectNode } = state
+  const { project, applyEdit, chapters, chapterVideos, selectedNode, selectNode } = state
   const node = newNode(type)
 
   const target = resolveInsertTarget(project, selectedNode, type, chapterVideos)
@@ -488,7 +488,7 @@ export function addNodeWithContext(
     if (firstCh) node.parameters = { chapterId: firstCh.id }
   }
 
-  updateProject(applyTimelineEdit(project, { type: 'insert', node, target }, chapters, chapterVideos))
+  applyEdit({ type: 'insert', node, target })
   selectNode(node)
 }
 

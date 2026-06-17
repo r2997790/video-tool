@@ -32,6 +32,12 @@ builder.Services.AddSingleton<SlackIntegrationService>();
 builder.Services.AddSingleton<TeamsIntegrationService>();
 builder.Services.AddScoped<ChatMessageService>();
 builder.Services.AddScoped<LeadNotificationService>();
+builder.Services.AddScoped<EventAccessService>();
+builder.Services.AddScoped<EventSessionService>();
+builder.Services.AddScoped<EventAnalyticsService>();
+builder.Services.AddScoped<AttendeeImportService>();
+builder.Services.AddScoped<PrivacyPolicyService>();
+builder.Services.AddSingleton<ICrmAttendeeProvider, NoOpCrmAttendeeProvider>();
 builder.Services.AddSignalR();
 builder.Services.AddControllers()
     .AddJsonOptions(o =>

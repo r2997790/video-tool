@@ -21,6 +21,11 @@ public class VideoToolDbContext : DbContext
     public DbSet<ScheduledEvent> ScheduledEvents => Set<ScheduledEvent>();
     public DbSet<ChatSessionMapping> ChatSessionMappings => Set<ChatSessionMapping>();
     public DbSet<LeadSubmission> LeadSubmissions => Set<LeadSubmission>();
+    public DbSet<EventAttendee> EventAttendees => Set<EventAttendee>();
+    public DbSet<GlobalAccessListEntry> GlobalAccessListEntries => Set<GlobalAccessListEntry>();
+    public DbSet<PrivacyPolicyRegion> PrivacyPolicyRegions => Set<PrivacyPolicyRegion>();
+    public DbSet<EventSessionLink> EventSessionLinks => Set<EventSessionLink>();
+    public DbSet<EventOccurrenceLog> EventOccurrenceLogs => Set<EventOccurrenceLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -84,6 +89,23 @@ public class VideoToolDbContext : DbContext
 
         modelBuilder.Entity<LeadSubmission>()
             .HasIndex(l => l.FlowSlug);
+
+        modelBuilder.Entity<EventAttendee>()
+            .HasIndex(a => new { a.EventId, a.Email });
+
+        modelBuilder.Entity<EventSessionLink>()
+            .HasIndex(l => new { l.SessionId, l.EventSlug })
+            .IsUnique();
+
+        modelBuilder.Entity<GlobalAccessListEntry>()
+            .HasIndex(e => new { e.ListType, e.MatchType, e.Value });
+
+        modelBuilder.Entity<PrivacyPolicyRegion>()
+            .HasIndex(r => r.RegionCode)
+            .IsUnique();
+
+        modelBuilder.Entity<EventOccurrenceLog>()
+            .HasIndex(o => o.EventId);
 
         modelBuilder.Entity<FlowProject>().HasData(new FlowProject
         {

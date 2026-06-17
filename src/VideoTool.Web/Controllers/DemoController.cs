@@ -23,13 +23,29 @@ public class DemoController : ControllerBase
     private readonly ChatMessageService _chat;
     private readonly RecurrenceService _recurrence;
     private readonly LeadNotificationService _leadNotify;
+    private readonly EventAccessService _access;
+    private readonly EventSessionService _session;
+    private readonly PrivacyPolicyService _privacy;
+    private readonly AttendeeImportService _attendeeImport;
 
-    public DemoController(VideoToolDbContext db, ChatMessageService chat, RecurrenceService recurrence, LeadNotificationService leadNotify)
+    public DemoController(
+        VideoToolDbContext db,
+        ChatMessageService chat,
+        RecurrenceService recurrence,
+        LeadNotificationService leadNotify,
+        EventAccessService access,
+        EventSessionService session,
+        PrivacyPolicyService privacy,
+        AttendeeImportService attendeeImport)
     {
         _db = db;
         _chat = chat;
         _recurrence = recurrence;
         _leadNotify = leadNotify;
+        _access = access;
+        _session = session;
+        _privacy = privacy;
+        _attendeeImport = attendeeImport;
     }
 
 
@@ -247,6 +263,14 @@ public class DemoController : ControllerBase
 
 
 
+        if (!string.IsNullOrWhiteSpace(req.EventSlug))
+        {
+            await _session.LinkSessionAsync(_db, req.SessionId.Trim(), req.EventSlug.Trim(),
+                req.EventOccurrenceStartUtc, viewerEmail: req.ViewerEmail);
+        }
+
+
+
         var record = await _db.ChapterViewRecords
 
             .FirstOrDefaultAsync(r => r.SessionId == req.SessionId && r.ChapterId == req.ChapterId);
@@ -304,6 +328,14 @@ public class DemoController : ControllerBase
         if (string.IsNullOrWhiteSpace(req.SessionId) || string.IsNullOrWhiteSpace(req.EventType))
 
             return BadRequest();
+
+
+
+        if (!string.IsNullOrWhiteSpace(req.EventSlug))
+        {
+            await _session.LinkSessionAsync(_db, req.SessionId.Trim(), req.EventSlug.Trim(),
+                req.EventOccurrenceStartUtc, viewerEmail: req.ViewerEmail);
+        }
 
 
 
@@ -391,7 +423,7 @@ public class DemoController : ControllerBase
 
     [HttpGet("event/{slug}")]
 
-    public async Task<IActionResult> GetScheduledEvent(string slug)
+    public async Task<IActionResult> GetScheduledEvent(string slug, [FromQuery] string? sessionId, [FromQuery] string? email)
 
     {
 
@@ -429,6 +461,46 @@ public class DemoController : ControllerBase
 
 
 
+        var normalizedEmail = string.IsNullOrWhiteSpace(email) ? null : EventAccessService.NormalizeEmail(email);
+        var requiresRegistration = ev.AccessMode == "selective";
+        var accessDenied = false;
+        string? attendeeStatus = null;
+
+        if (!string.IsNullOrWhiteSpace(normalizedEmail))
+        {
+            var attendee = await _db.EventAttendees.AsNoTracking()
+                .FirstOrDefaultAsync(a => a.EventId == ev.Id && a.Email == normalizedEmail);
+            attendeeStatus = attendee?.Status;
+        }
+
+        if (requiresRegistration)
+        {
+            if (string.IsNullOrWhiteSpace(normalizedEmail))
+            {
+                accessDenied = true;
+            }
+            else
+            {
+                accessDenied = !await _access.CanAccessAsync(_db, ev, normalizedEmail);
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(sessionId))
+        {
+            await _session.LinkSessionAsync(_db, sessionId.Trim(), ev.Slug, nextStarts, viewerEmail: normalizedEmail);
+        }
+
+
+
+        object? registrationForm = null;
+        if (!string.IsNullOrWhiteSpace(ev.RegistrationFormJson))
+        {
+            try { registrationForm = JsonSerializer.Deserialize<object>(ev.RegistrationFormJson); }
+            catch { /* ignore */ }
+        }
+
+
+
         return Ok(new
 
         {
@@ -462,6 +534,186 @@ public class DemoController : ControllerBase
             timezone = ev.Timezone,
 
             serverNowUtc = now,
+
+            accessMode = ev.AccessMode,
+
+            requiresRegistration,
+
+            accessDenied,
+
+            attendeeStatus,
+
+            registrationForm,
+
+            registrationApprovalMode = ev.RegistrationApprovalMode,
+
+        });
+
+    }
+
+
+
+    [HttpPost("event/{slug}/register")]
+
+    public async Task<IActionResult> RegisterForEvent(string slug, [FromBody] EventRegistrationRequest req)
+
+    {
+
+        var ev = await _db.ScheduledEvents.FirstOrDefaultAsync(e => e.Slug == slug && e.IsEnabled);
+
+        if (ev == null) return NotFound();
+
+
+
+        if (string.IsNullOrWhiteSpace(req.SessionId) || string.IsNullOrWhiteSpace(req.Email))
+
+            return BadRequest(new { error = "Session ID and email required" });
+
+
+
+        var email = EventAccessService.NormalizeEmail(req.Email);
+
+        if (!await _access.CanRegisterAsync(_db, ev, email))
+
+            return BadRequest(new { error = "Registration not allowed for this email" });
+
+
+
+        var region = _privacy.ResolveRegion(req.Locale, req.Timezone);
+
+        var policy = await _privacy.GetPolicyAsync(_db, region, ev);
+
+        if (policy.ConsentRequired && !req.ConsentGiven)
+
+            return BadRequest(new { error = "Consent required", region, consentRequired = true });
+
+
+
+        var status = ev.RegistrationApprovalMode switch
+
+        {
+
+            "manual" => "pending",
+
+            "crm_or_form" => "pending",
+
+            _ => "approved",
+
+        };
+
+
+
+        var attendee = await _db.EventAttendees.FirstOrDefaultAsync(a => a.EventId == ev.Id && a.Email == email);
+
+        if (attendee == null)
+
+        {
+
+            attendee = new EventAttendee
+
+            {
+
+                EventId = ev.Id,
+
+                Email = email,
+
+                Name = req.Name,
+
+                Status = status,
+
+                Source = "app_form",
+
+                AnswersJson = req.AnswersJson,
+
+                ConsentRegion = region,
+
+                ConsentGivenAt = req.ConsentGiven ? DateTime.UtcNow : null,
+
+                ConsentNoticeVersion = policy.RegionCode,
+
+                CreatedAt = DateTime.UtcNow,
+
+                UpdatedAt = DateTime.UtcNow,
+
+            };
+
+            _db.EventAttendees.Add(attendee);
+
+        }
+
+        else if (attendee.Status == "rejected")
+
+        {
+
+            return BadRequest(new { error = "Registration was previously rejected" });
+
+        }
+
+        else
+
+        {
+
+            attendee.Name ??= req.Name;
+
+            attendee.AnswersJson = req.AnswersJson ?? attendee.AnswersJson;
+
+            attendee.UpdatedAt = DateTime.UtcNow;
+
+        }
+
+
+
+        await _db.SaveChangesAsync();
+
+
+
+        await _session.LinkSessionAsync(_db, req.SessionId.Trim(), ev.Slug,
+
+            _recurrence.GetNextStartsAtUtc(ev, DateTime.UtcNow), attendee.Id, email);
+
+
+
+        var config = await _db.DemoConfigs.FirstAsync();
+
+        await _attendeeImport.NotifyRegistrationAsync(config, ev, attendee);
+
+
+
+        return Ok(new { attendee.Id, attendee.Status, attendee.Email });
+
+    }
+
+
+
+    [HttpGet("event/{slug}/privacy")]
+
+    public async Task<IActionResult> GetEventPrivacy(string slug, [FromQuery] string? locale, [FromQuery] string? timezone)
+
+    {
+
+        var ev = await _db.ScheduledEvents.AsNoTracking()
+
+            .FirstOrDefaultAsync(e => e.Slug == slug && e.IsEnabled);
+
+        if (ev == null) return NotFound();
+
+
+
+        var region = _privacy.ResolveRegion(locale, timezone);
+
+        var policy = await _privacy.GetPolicyAsync(_db, region, ev);
+
+        return Ok(new
+
+        {
+
+            region,
+
+            noticeHtml = policy.NoticeHtml,
+
+            consentRequired = policy.ConsentRequired,
+
+            policyUrl = policy.PolicyUrl,
 
         });
 
@@ -599,11 +851,13 @@ public class DemoController : ControllerBase
 
     public record ChatRequest(string SessionId, string Message, string? ChapterContext, string? FlowSlug = null);
 
-    public record HeartbeatRequest(string SessionId, int ChapterId, int SecondsWatched);
+    public record HeartbeatRequest(string SessionId, int ChapterId, int SecondsWatched, string? EventSlug = null, DateTime? EventOccurrenceStartUtc = null, string? ViewerEmail = null);
 
-    public record EngagementEventRequest(string SessionId, string EventType, int? ChapterId, int? ToasterId, string? DataJson, string? FlowSlug = null);
+    public record EngagementEventRequest(string SessionId, string EventType, int? ChapterId, int? ToasterId, string? DataJson, string? FlowSlug = null, string? EventSlug = null, DateTime? EventOccurrenceStartUtc = null, string? ViewerEmail = null);
 
     public record LeadSubmissionRequest(string SessionId, string FlowSlug, string Source, string? AnswersJson, int? ChapterId = null, string? NodeId = null);
+
+    public record EventRegistrationRequest(string SessionId, string Email, string? Name, string? AnswersJson, bool ConsentGiven, string? Locale, string? Timezone);
 
 }
 

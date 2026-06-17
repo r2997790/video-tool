@@ -4,6 +4,7 @@ import { AdminFieldLabel } from '../../components/AdminFieldLabel'
 import { ThemePreview } from '../../components/ThemePreview'
 import { useToast } from '../../components/Toast'
 import { HELP } from '../../adminHelpText'
+import { EventAccessSettings } from './EventAccessSettings'
 
 const THEME_FIELDS = [
   { key: 'themePrimaryColor', label: 'Primary color', type: 'color', help: HELP.settings.themePrimaryColor },
@@ -56,6 +57,8 @@ function buildPayload(config: Record<string, unknown>) {
     teamsServiceUrl: config.teamsServiceUrl ?? '',
     leadWebhookUrl: config.leadWebhookUrl ?? '',
     leadNotifyEmail: config.leadNotifyEmail ?? '',
+    attendeeWebhookUrl: config.attendeeWebhookUrl ?? '',
+    blockedEmailDomainsJson: config.blockedEmailDomainsJson ?? '[]',
   }
 }
 
@@ -215,6 +218,21 @@ export function SettingsPage() {
               />
             </AdminFieldLabel>
           </div>
+
+          <div className="admin-card" style={{ marginTop: 24 }}>
+            <h3 style={{ marginTop: 0 }}>Event registrations</h3>
+            <AdminFieldLabel label="Registration webhook URL" help="POST JSON when someone registers for an event">
+              <input className="admin-input" value={(config.attendeeWebhookUrl as string) || ''}
+                placeholder="https://hooks.example.com/event-registrations"
+                onChange={e => setConfig(c => ({ ...c!, attendeeWebhookUrl: e.target.value }))} />
+            </AdminFieldLabel>
+            <AdminFieldLabel label="Blocked email domains (JSON array)" help="e.g. [&quot;gmail.com&quot;,&quot;yahoo.com&quot;] — non-work emails">
+              <textarea className="admin-textarea" rows={2} value={(config.blockedEmailDomainsJson as string) || '[]'}
+                onChange={e => setConfig(c => ({ ...c!, blockedEmailDomainsJson: e.target.value }))} />
+            </AdminFieldLabel>
+          </div>
+
+          <EventAccessSettings />
 
           <div className="admin-card" style={{ marginTop: 24 }}>
             <h3 style={{ marginTop: 0 }}>Integrations</h3>

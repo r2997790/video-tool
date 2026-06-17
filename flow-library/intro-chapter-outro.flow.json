@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "exportedAt": "2026-06-17T00:00:00.000Z",
+  "projectName": "Intro → Chapter → Outro",
+  "project": {
+    "projectName": "Intro → Chapter → Outro",
+    "nodes": [
+      {
+        "id": "intro-1",
+        "type": "intro",
+        "name": "Welcome",
+        "parameters": {
+          "heading": "Welcome",
+          "subtext": "Please answer a few questions.",
+          "questions": [{ "id": "name", "label": "Your name", "type": "text", "required": true }]
+        },
+        "x": 80,
+        "y": 80
+      },
+      {
+        "id": "chapter-1",
+        "type": "chapter",
+        "name": "Main chapter",
+        "parameters": { "chapterId": 1 },
+        "x": 320,
+        "y": 80
+      },
+      {
+        "id": "video-1",
+        "type": "video",
+        "name": "First video",
+        "parameters": { "chapterId": 1, "videoId": 1 },
+        "x": 40,
+        "y": 60
+      },
+      {
+        "id": "outro-1",
+        "type": "outro",
+        "name": "Thank you",
+        "parameters": {
+          "heading": "Thank you",
+          "subtext": "Any final feedback?",
+          "questions": [{ "id": "feedback", "label": "Feedback", "type": "text" }]
+        },
+        "x": 640,
+        "y": 80
+      }
+    ],
+    "connections": [
+      { "from": "intro-1", "to": "chapter-1" },
+      { "from": "chapter-1", "to": "video-1" },
+      { "from": "video-1", "to": "outro-1" }
+    ]
+  },
+  "metadata": {
+    "description": "Simple linear demo: intro questions, one chapter with video, outro feedback.",
+    "tags": ["starter", "linear"]
+  }
+}

@@ -23,9 +23,11 @@ interface Props {
 
 export function FlowEventOverlay({ node, eventData, onComplete }: Props) {
   const p = node.parameters as FlowEventParams
-  const startsAt = eventData?.startsAtUtc ?? p.startsAtUtc ?? ''
+  const startsAt = eventData?.nextStartsAtUtc ?? eventData?.startsAtUtc ?? p.startsAtUtc ?? ''
   const serverNow = eventData?.serverNowUtc ?? new Date().toISOString()
   const remainingMs = useEventCountdown(startsAt || null, serverNow || null)
+
+  const isLive = eventData?.isLive || eventHasStarted(remainingMs)
 
   const heading = eventData?.holdingHeading ?? p.holdingHeading ?? p.title ?? eventData?.title ?? 'Starting soon'
   const message = eventData?.holdingMessage ?? p.holdingMessage ?? ''
@@ -34,8 +36,8 @@ export function FlowEventOverlay({ node, eventData, onComplete }: Props) {
   const videoValue = eventData?.holdingVideoValue ?? p.holdingVideoUrl ?? ''
 
   useEffect(() => {
-    if (eventHasStarted(remainingMs)) onComplete()
-  }, [remainingMs, onComplete])
+    if (isLive || eventHasStarted(remainingMs)) onComplete()
+  }, [remainingMs, onComplete, isLive])
 
   if (startsAt && remainingMs === null) {
     return (
@@ -47,7 +49,7 @@ export function FlowEventOverlay({ node, eventData, onComplete }: Props) {
     )
   }
 
-  if (eventHasStarted(remainingMs)) return null
+  if (eventHasStarted(remainingMs) || isLive) return null
 
   const isYoutube = videoType === 'youtube' && videoValue
   const isDirect = videoType === 'direct' && videoValue

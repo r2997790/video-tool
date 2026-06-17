@@ -20,6 +20,17 @@ public static class DatabaseSeeder
                 MustChangePassword = true,
             });
         }
+        else if (ShouldSyncAdminPassword())
+        {
+            var admin = await db.AdminUsers.FirstOrDefaultAsync(u => u.Username == "admin");
+            if (admin != null)
+            {
+                admin.PasswordHash = BCrypt.Net.BCrypt.HashPassword(adminPassword);
+                admin.MustChangePassword = false;
+            }
+        }
+
+        await db.SaveChangesAsync();
 
         var defaultFlow = await db.FlowProjects.FirstOrDefaultAsync(f => f.Slug == "default")
             ?? await db.FlowProjects.FirstAsync();
@@ -176,5 +187,11 @@ public static class DatabaseSeeder
             LiveDurationMinutes = 120,
             IsEnabled = true,
         });
+    }
+
+    private static bool ShouldSyncAdminPassword()
+    {
+        var flag = Environment.GetEnvironmentVariable("SYNC_ADMIN_PASSWORD");
+        return flag is "1" or "true" or "TRUE";
     }
 }

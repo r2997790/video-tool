@@ -113,18 +113,52 @@ public class RecurrenceServiceTests
     }
 
     [Fact]
-    public void RecurrenceEnd_StopsInterval()
+    public void DisplayStatus_Inactive_WhenDisabled()
     {
-        var anchor = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc);
+        var ev = new ScheduledEvent { IsEnabled = false, RecurrenceType = "none", StartsAtUtc = DateTime.UtcNow.AddHours(1) };
+        Assert.Equal("inactive", _svc.GetEventDisplayStatus(ev, DateTime.UtcNow));
+    }
+
+    [Fact]
+    public void DisplayStatus_Programmed_WhenFutureOneShot()
+    {
         var ev = new ScheduledEvent
         {
-            StartsAtUtc = anchor,
-            RecurrenceType = "interval",
-            RecurrenceStartUtc = anchor,
-            IntervalMinutes = 60,
-            RecurrenceEndUtc = new DateTime(2026, 6, 1, 2, 0, 0, DateTimeKind.Utc),
+            IsEnabled = true,
+            RecurrenceType = "none",
+            StartsAtUtc = new DateTime(2026, 12, 1, 10, 0, 0, DateTimeKind.Utc),
         };
-        var now = new DateTime(2026, 6, 1, 3, 0, 0, DateTimeKind.Utc);
-        Assert.Null(_svc.GetNextOccurrenceUtc(ev, now));
+        var now = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc);
+        Assert.Equal("programmed", _svc.GetEventDisplayStatus(ev, now));
+    }
+
+    [Fact]
+    public void DisplayStatus_Past_WhenOneShotEnded()
+    {
+        var ev = new ScheduledEvent
+        {
+            IsEnabled = true,
+            RecurrenceType = "none",
+            StartsAtUtc = new DateTime(2026, 1, 1, 10, 0, 0, DateTimeKind.Utc),
+            LiveDurationMinutes = 30,
+        };
+        var now = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc);
+        Assert.Equal("past", _svc.GetEventDisplayStatus(ev, now));
+    }
+
+    [Fact]
+    public void InstantEvent_IsLiveImmediately()
+    {
+        var now = new DateTime(2026, 6, 15, 12, 0, 0, DateTimeKind.Utc);
+        var ev = new ScheduledEvent
+        {
+            IsEnabled = true,
+            EventKind = "instant",
+            StartsAtUtc = now,
+            RecurrenceType = "none",
+            LiveDurationMinutes = 60,
+        };
+        Assert.True(_svc.IsLive(ev, now));
+        Assert.Equal("instant", _svc.GetEventDisplayStatus(ev, now));
     }
 }

@@ -3,10 +3,12 @@ WORKDIR /app
 EXPOSE 8080
 
 FROM node:20-alpine AS frontend
+WORKDIR /src
+COPY client/package*.json client/
+COPY flow-library/ flow-library/
+COPY client/ client/
 WORKDIR /src/client
-COPY client/package*.json ./
 RUN npm ci
-COPY client/ ./
 RUN npm run build
 
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build

@@ -4,8 +4,6 @@ import {
   Background,
   Controls,
   MiniMap,
-  addEdge,
-  reconnectEdge,
   useNodesState,
   useEdgesState,
   type Connection,
@@ -15,31 +13,23 @@ import {
   SelectionMode,
   Handle,
   Position,
-  Panel,
+  NodeResizer,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import type { FlowNode, FlowProject } from '../types'
+import { FLOW_NODE_COLORS } from './flowNodeColors'
 import { canConnect } from './flowSchema'
-import { findChapterAncestor, rebuildSpineConnections } from './flowTimeline'
 import { buildClipboard, pasteClipboard, type FlowClipboardPayload } from './flowClipboard'
+import {
+  dropTargetToEdit,
+  projectToGraph,
+  resolveDropTarget,
+} from './flowGraphLayout'
 import type { FlowEditorState } from './useFlowEditorState'
 import { useToast } from '../components/Toast'
 
-const NODE_COLORS: Record<string, string> = {
-  intro: '#6366f1',
-  event: '#14b8a6',
-  question: '#0ea5e9',
-  branch: '#f59e0b',
-  chapter: '#77c043',
-  video: '#22c55e',
-  toaster: '#f97316',
-  pause: '#ef4444',
-  aichat: '#a855f7',
-  outro: '#ec4899',
-}
-
 function FlowNodeCard({ data }: { data: { label: string; nodeType: string; parameters: Record<string, unknown>; chapterSubtitle?: string; videoSubtitle?: string } }) {
-  const color = NODE_COLORS[data.nodeType] || '#666'
+  const color = FLOW_NODE_COLORS[data.nodeType] || '#666'
   return (
     <div className="flow-canvas-node" style={{ borderColor: color }}>
       <Handle type="target" position={Position.Left} />
@@ -65,16 +55,27 @@ function FlowNodeCard({ data }: { data: { label: string; nodeType: string; param
   )
 }
 
-const nodeTypes = { flowNode: FlowNodeCard }
-
-function toReactFlowNodes(nodes: FlowNode[]): Node[] {
-  return nodes.map((n, i) => ({
-    id: n.id,
-    type: 'flowNode',
-    position: { x: n.x ?? 80 + (i % 4) * 220, y: n.y ?? 80 + Math.floor(i / 4) * 140 },
-    data: { label: n.name, nodeType: n.type, parameters: n.parameters, raw: n },
-  }))
+function ChapterGroupNode({
+  data,
+  selected,
+}: {
+  data: { label: string; chapterSubtitle?: string; isDropTarget?: boolean }
+  selected?: boolean
+}) {
+  return (
+    <div className={`flow-chapter-group${selected ? ' is-selected' : ''}${data.isDropTarget ? ' is-drop-target' : ''}`}>
+      <NodeResizer minWidth={280} minHeight={160} isVisible={selected} />
+      <div className="flow-chapter-group-header">
+        <span className="flow-chapter-group-icon">▣</span>
+        <span className="flow-chapter-group-title">{data.label}</span>
+        {data.chapterSubtitle && <span className="flow-chapter-group-sub">{data.chapterSubtitle}</span>}
+      </div>
+      <div className="flow-chapter-group-body">Drop nodes here</div>
+    </div>
+  )
 }
+
+const nodeTypes = { flowNode: FlowNodeCard, chapterGroup: ChapterGroupNode }
 
 function toReactFlowEdges(connections: FlowProject['connections']): Edge[] {
   return connections.map((c, i) => ({
@@ -86,24 +87,6 @@ function toReactFlowEdges(connections: FlowProject['connections']): Edge[] {
     reconnectable: true,
     style: { stroke: '#77c043', strokeWidth: 1.5 },
   }))
-}
-
-function fromReactFlow(nodes: Node[], edges: Edge[], projectName: string): FlowProject {
-  return {
-    projectName,
-    nodes: nodes.map(n => {
-      const raw = (n.data as { raw?: FlowNode }).raw
-      return {
-        id: n.id,
-        type: (raw?.type || (n.data as { nodeType: string }).nodeType) as FlowNode['type'],
-        name: (n.data as { label: string }).label,
-        parameters: (n.data as { parameters: Record<string, unknown> }).parameters || raw?.parameters || {},
-        x: n.position.x,
-        y: n.position.y,
-      }
-    }),
-    connections: edges.map(e => ({ from: e.source, to: e.target })),
-  }
 }
 
 function nodeFromCanvas(n: Node): FlowNode {
@@ -118,31 +101,54 @@ function nodeFromCanvas(n: Node): FlowNode {
   }
 }
 
+function absolutePosition(node: Node, graphNodes: Node[]): { x: number; y: number } {
+  let x = node.position.x
+  let y = node.position.y
+  let parentId = node.parentId
+  while (parentId) {
+    const parent = graphNodes.find(n => n.id === parentId)
+    if (!parent) break
+    x += parent.position.x
+    y += parent.position.y
+    parentId = parent.parentId
+  }
+  return { x, y }
+}
+
 interface VisualFlowEditorProps {
   state: FlowEditorState
 }
 
 export function VisualFlowEditor({ state }: VisualFlowEditorProps) {
-  const { project, projectName, updateProject, chapters, chapterVideos, selectNode, selectedNodeId } = state
+  const {
+    project,
+    applyEdit,
+    chapters,
+    chapterVideos,
+    selectNode,
+    selectEdge,
+    selectedNodeId,
+    selectedNodeIds,
+    setSelectedNodeIds,
+    selectedEdge,
+  } = state
   const toast = useToast()
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
-  const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([])
-  const [selectedEdge, setSelectedEdge] = useState<Edge | null>(null)
+  const [dragOverChapterId, setDragOverChapterId] = useState<string | null>(null)
   const [a11yMessage, setA11yMessage] = useState('')
   const canvasRef = useRef<HTMLDivElement>(null)
   const clipboardRef = useRef<FlowClipboardPayload | null>(null)
   const syncingRef = useRef(false)
+  const nodesRef = useRef<Node[]>([])
 
   useEffect(() => {
-    syncingRef.current = true
-    setNodes(toReactFlowNodes(project.nodes || []))
-    setEdges(toReactFlowEdges(project.connections || []))
-    requestAnimationFrame(() => { syncingRef.current = false })
-  }, [project, setNodes, setEdges])
+    nodesRef.current = nodes
+  }, [nodes])
 
-  useEffect(() => {
-    setNodes(ns => ns.map(n => {
+  const buildGraph = useCallback(() => {
+    const graph = projectToGraph(project, chapters, chapterVideos)
+    return graph.map(n => {
       const nodeType = (n.data as { nodeType: string }).nodeType
       const params = (n.data as { parameters: Record<string, unknown> }).parameters
       if (nodeType === 'chapter') {
@@ -151,7 +157,14 @@ export function VisualFlowEditor({ state }: VisualFlowEditorProps) {
         const chapterSubtitle = ch
           ? `${ch.name}${ch.duration ? ` · ${ch.duration}` : ''}`
           : chapterId ? `Chapter #${chapterId}` : undefined
-        return { ...n, data: { ...n.data, chapterSubtitle } }
+        return {
+          ...n,
+          data: {
+            ...n.data,
+            chapterSubtitle,
+            isDropTarget: n.id === dragOverChapterId,
+          },
+        }
       }
       if (nodeType === 'video') {
         const videoId = params.videoId as number | undefined
@@ -160,15 +173,18 @@ export function VisualFlowEditor({ state }: VisualFlowEditorProps) {
         return { ...n, data: { ...n.data, videoSubtitle } }
       }
       return n
-    }))
-  }, [chapters, chapterVideos, setNodes])
+    })
+  }, [project, chapters, chapterVideos, dragOverChapterId])
 
-  const pushToProject = useCallback((nextNodes: Node[], nextEdges: Edge[]) => {
-    if (syncingRef.current) return
-    updateProject(fromReactFlow(nextNodes, nextEdges, projectName))
-  }, [updateProject, projectName])
+  useEffect(() => {
+    syncingRef.current = true
+    setNodes(buildGraph())
+    setEdges(toReactFlowEdges(project.connections || []))
+    requestAnimationFrame(() => { syncingRef.current = false })
+  }, [project, buildGraph, setNodes, setEdges])
 
   const onConnect = useCallback((params: Connection) => {
+    if (!params.source || !params.target) return
     const source = nodes.find(n => n.id === params.source)
     const target = nodes.find(n => n.id === params.target)
     if (source && target) {
@@ -179,102 +195,85 @@ export function VisualFlowEditor({ state }: VisualFlowEditorProps) {
         return
       }
     }
-    setEdges(eds => {
-      const next = addEdge({ ...params, animated: true, deletable: true, reconnectable: true, style: { stroke: '#77c043', strokeWidth: 1.5 } }, eds)
-      if (syncingRef.current) return next
-      const rfProject = fromReactFlow(nodes, next, projectName)
-      const fromChapter = params.source ? findChapterAncestor(project, params.source) : null
-      const toChapter = params.target ? findChapterAncestor(project, params.target) : null
-      const synced = fromChapter && toChapter && fromChapter.id === toChapter.id
-        ? rebuildSpineConnections(rfProject, chapters, chapterVideos)
-        : rfProject
-      updateProject(synced)
-      return next
-    })
-  }, [nodes, setEdges, project, projectName, chapters, chapterVideos, updateProject, toast])
+    applyEdit({ type: 'connectNodes', from: params.source, to: params.target })
+  }, [nodes, applyEdit, toast])
 
   const onEdgesChangeWrapped = useCallback((changes: Parameters<typeof onEdgesChange>[0]) => {
     onEdgesChange(changes)
-    if (changes.some(c => c.type === 'remove' || c.type === 'add')) {
-      setEdges(current => {
-        pushToProject(nodes, current)
-        return current
-      })
-    }
+    if (syncingRef.current) return
     for (const ch of changes) {
-      if (ch.type === 'remove' && selectedEdge && ch.id === selectedEdge.id) {
-        setSelectedEdge(null)
+      if (ch.type === 'remove') {
+        const edge = edges.find(e => e.id === ch.id)
+        if (edge) {
+          applyEdit({ type: 'disconnectEdge', from: edge.source, to: edge.target })
+          if (selectedEdge?.from === edge.source && selectedEdge?.to === edge.target) {
+            selectEdge(null)
+          }
+        }
       }
     }
-  }, [onEdgesChange, selectedEdge, nodes, pushToProject, setEdges])
+  }, [onEdgesChange, edges, applyEdit, selectedEdge, selectEdge])
+
+  const onNodeDrag = useCallback((_: unknown, node: Node) => {
+    const abs = absolutePosition(node, nodesRef.current)
+    const target = resolveDropTarget(project, node.id, abs, nodesRef.current, chapters, chapterVideos)
+    if (target?.scope === 'chapter') {
+      setDragOverChapterId(target.chapterNodeId)
+    } else {
+      setDragOverChapterId(null)
+    }
+  }, [project, chapters, chapterVideos])
+
+  const onNodeDragStop = useCallback((_: unknown, node: Node) => {
+    setDragOverChapterId(null)
+    if (syncingRef.current) return
+
+    const abs = absolutePosition(node, nodesRef.current)
+    const dropTarget = resolveDropTarget(project, node.id, abs, nodesRef.current, chapters, chapterVideos)
+    const structuralEdit = dropTarget ? dropTargetToEdit(node.id, dropTarget, project, chapterVideos) : null
+
+    if (structuralEdit) {
+      applyEdit(structuralEdit)
+      return
+    }
+
+    const positions = nodesRef.current.map(n => ({
+      nodeId: n.id,
+      x: n.position.x,
+      y: n.position.y,
+    }))
+    applyEdit({ type: 'updatePositions', positions })
+  }, [project, chapters, chapterVideos, applyEdit])
 
   const onNodesChangeWrapped = useCallback((changes: Parameters<typeof onNodesChange>[0]) => {
     onNodesChange(changes)
-    if (changes.some(c => c.type === 'position' && c.dragging === false)) {
-      setNodes(current => {
-        pushToProject(current, edges)
-        return current
-      })
-    }
     const removed = changes.filter(c => c.type === 'remove').map(c => c.id)
-    if (removed.length) {
+    if (removed.length && !syncingRef.current) {
       setSelectedNodeIds(ids => ids.filter(id => !removed.includes(id)))
-      setEdges(current => {
-        const next = current.filter(e => !removed.includes(e.source) && !removed.includes(e.target))
-        setNodes(nds => {
-          const filtered = nds.filter(n => !removed.includes(n.id))
-          pushToProject(filtered, next)
-          return filtered
-        })
-        return next
-      })
+      applyEdit({ type: 'removeNodes', nodeIds: removed })
     }
-  }, [onNodesChange, edges, pushToProject, setNodes, setEdges])
+  }, [onNodesChange, applyEdit, setSelectedNodeIds])
 
   const onSelectionChange = useCallback(({ nodes: selNodes, edges: selEdges }: OnSelectionChangeParams) => {
-    setSelectedEdge(selEdges[0] ?? null)
     const ids = selNodes.map(n => n.id)
     setSelectedNodeIds(ids)
     if (selNodes.length === 1) {
       selectNode(nodeFromCanvas(selNodes[0]))
+      selectEdge(null)
       setA11yMessage(`Selected node ${selNodes[0].data.label}`)
     } else if (selNodes.length > 1) {
       selectNode(null)
+      selectEdge(null)
       setA11yMessage(`${selNodes.length} nodes selected`)
     } else if (selEdges.length === 1) {
       selectNode(null)
+      selectEdge({ from: selEdges[0].source, to: selEdges[0].target })
       setA11yMessage('Connection selected')
     } else {
       selectNode(null)
+      selectEdge(null)
     }
-  }, [selectNode])
-
-  const deleteSelection = useCallback(() => {
-    const ids = new Set(selectedNodeIds.length ? selectedNodeIds : selectedNodeId ? [selectedNodeId] : [])
-    if (ids.size === 0 && !selectedEdge) return
-    if (ids.size > 0) {
-      setNodes(nds => {
-        const filtered = nds.filter(n => !ids.has(n.id))
-        setEdges(eds => {
-          const next = eds.filter(e => !ids.has(e.source) && !ids.has(e.target))
-          pushToProject(filtered, next)
-          return next
-        })
-        return filtered
-      })
-      selectNode(null)
-      setSelectedNodeIds([])
-      setA11yMessage(`Deleted ${ids.size} node${ids.size === 1 ? '' : 's'}`)
-    } else if (selectedEdge) {
-      setEdges(eds => {
-        const next = eds.filter(e => e.id !== selectedEdge.id)
-        pushToProject(nodes, next)
-        return next
-      })
-      setSelectedEdge(null)
-      setA11yMessage('Connection deleted')
-    }
-  }, [selectedNodeIds, selectedNodeId, selectedEdge, setNodes, setEdges, nodes, pushToProject, selectNode])
+  }, [selectNode, selectEdge, setSelectedNodeIds])
 
   useEffect(() => {
     const el = canvasRef.current
@@ -297,29 +296,32 @@ export function VisualFlowEditor({ state }: VisualFlowEditorProps) {
         const clip = clipboardRef.current
         if (clip) {
           e.preventDefault()
-          const { nodes: pasted, edges: pastedEdges } = pasteClipboard(clip, toReactFlowNodes)
-          setNodes(nds => {
-            const next = [...nds, ...pasted]
-            setEdges(eds => {
-              const nextEdges = [...eds, ...pastedEdges]
-              pushToProject(next, nextEdges)
-              return nextEdges
-            })
-            return next
-          })
+          toast.toast('Paste adds nodes at default positions — adjust in timeline or drag into chapters.')
+          const { nodes: pasted, edges: pastedEdges } = pasteClipboard(clip, (flowNodes: FlowNode[]) =>
+            flowNodes.map((n, i) => ({
+              id: n.id,
+              type: 'flowNode',
+              position: { x: 80 + (i % 4) * 220, y: 80 + Math.floor(i / 4) * 140 },
+              data: { label: n.name, nodeType: n.type, parameters: n.parameters, raw: n },
+            })),
+          )
+          for (const n of pasted) {
+            const raw = (n.data as { raw?: FlowNode }).raw
+            if (raw) applyEdit({ type: 'insert', node: raw, target: { scope: 'top' } })
+          }
+          for (const e of pastedEdges) {
+            applyEdit({ type: 'connectNodes', from: e.source, to: e.target })
+          }
           setA11yMessage(`Pasted ${pasted.length} node${pasted.length === 1 ? '' : 's'}`)
         }
-      }
-      if ((e.key === 'Delete' || e.key === 'Backspace') && (selectedNodeIds.length || selectedNodeId || selectedEdge)) {
-        e.preventDefault()
-        deleteSelection()
       }
     }
     el.addEventListener('keydown', onKeyDown)
     return () => el.removeEventListener('keydown', onKeyDown)
-  }, [nodes, edges, selectedNodeIds, selectedNodeId, selectedEdge, deleteSelection, setNodes, setEdges, pushToProject])
+  }, [nodes, edges, selectedNodeIds, selectedNodeId, applyEdit, toast])
 
   const onReconnect = useCallback((oldEdge: Edge, newConnection: Connection) => {
+    if (!newConnection.source || !newConnection.target) return
     const source = nodes.find(n => n.id === newConnection.source)
     const target = nodes.find(n => n.id === newConnection.target)
     if (source && target) {
@@ -330,51 +332,32 @@ export function VisualFlowEditor({ state }: VisualFlowEditorProps) {
         return
       }
     }
-    setEdges(els => {
-      const next = reconnectEdge(oldEdge, newConnection, els)
-      pushToProject(nodes, next)
-      return next
+    applyEdit({
+      type: 'reconnectEdge',
+      oldFrom: oldEdge.source,
+      oldTo: oldEdge.target,
+      newFrom: newConnection.source,
+      newTo: newConnection.target,
     })
-    setSelectedEdge(null)
-  }, [setEdges, nodes, pushToProject, toast])
+    selectEdge(null)
+  }, [nodes, applyEdit, toast, selectEdge])
 
   const onEdgeClick = useCallback((_: React.MouseEvent, edge: Edge) => {
-    setSelectedEdge(edge)
-  }, [])
-
-  const breakSelectedEdge = () => {
-    if (!selectedEdge) return
-    setEdges(eds => {
-      const next = eds.filter(e => e.id !== selectedEdge.id)
-      pushToProject(nodes, next)
-      return next
-    })
-    setSelectedEdge(null)
-  }
+    selectEdge({ from: edge.source, to: edge.target })
+    selectNode(null)
+  }, [selectEdge, selectNode])
 
   const styledEdges = useMemo(() => edges.map(e => ({
     ...e,
     style: {
       ...e.style,
-      stroke: selectedEdge?.id === e.id ? '#f59e0b' : '#77c043',
-      strokeWidth: selectedEdge?.id === e.id ? 3 : 1.5,
+      stroke: selectedEdge?.from === e.source && selectedEdge?.to === e.target ? '#f59e0b' : '#77c043',
+      strokeWidth: selectedEdge?.from === e.source && selectedEdge?.to === e.target ? 3 : 1.5,
     },
   })), [edges, selectedEdge])
 
   return (
     <div className="flow-editor-canvas-wrap">
-      <div className="flow-visual-toolbar">
-        {selectedEdge && (
-          <button type="button" className="admin-btn admin-btn-danger admin-btn-sm" onClick={breakSelectedEdge}>
-            Break link
-          </button>
-        )}
-        {(selectedNodeIds.length > 0 || selectedNodeId) && (
-          <button type="button" className="admin-btn admin-btn-danger admin-btn-sm" onClick={deleteSelection}>
-            Delete {selectedNodeIds.length > 1 ? `(${selectedNodeIds.length})` : 'node'}
-          </button>
-        )}
-      </div>
       <div
         className="flow-editor-canvas"
         ref={canvasRef}
@@ -392,7 +375,9 @@ export function VisualFlowEditor({ state }: VisualFlowEditorProps) {
           onReconnect={onReconnect}
           onEdgeClick={onEdgeClick}
           onSelectionChange={onSelectionChange}
-          onPaneClick={() => { setSelectedEdge(null) }}
+          onNodeDrag={onNodeDrag}
+          onNodeDragStop={onNodeDragStop}
+          onPaneClick={() => { selectEdge(null) }}
           selectionOnDrag
           panOnDrag={[1, 2]}
           multiSelectionKeyCode="Shift"
@@ -407,12 +392,10 @@ export function VisualFlowEditor({ state }: VisualFlowEditorProps) {
         >
           <Background gap={20} color="#2e3032" />
           <Controls />
-          <MiniMap nodeColor={n => NODE_COLORS[(n.data as { nodeType: string }).nodeType] || '#666'} />
-          <Panel position="top-left">
-            <span style={{ fontSize: 12, color: '#9b9d9f' }}>
-              Shift+click multi-select · Ctrl+C/V copy/paste · Del delete
-            </span>
-          </Panel>
+          <MiniMap
+            className="flow-minimap"
+            nodeColor={n => FLOW_NODE_COLORS[(n.data as { nodeType: string }).nodeType] || '#666'}
+          />
         </ReactFlow>
       </div>
     </div>

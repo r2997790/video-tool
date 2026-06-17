@@ -1,0 +1,108 @@
+{
+  "schemaVersion": 1,
+  "exportedAt": "2026-06-17T00:00:00.000Z",
+  "projectName": "Branching demo",
+  "project": {
+    "projectName": "Branching demo",
+    "nodes": [
+      {
+        "id": "intro-1",
+        "type": "intro",
+        "name": "Welcome",
+        "parameters": {
+          "heading": "Welcome",
+          "subtext": "Tell us your interest.",
+          "questions": [{ "id": "name", "label": "Your name", "type": "text", "required": true }]
+        },
+        "x": 80,
+        "y": 80
+      },
+      {
+        "id": "question-1",
+        "type": "question",
+        "name": "Interest",
+        "parameters": {
+          "prompt": "What would you like to explore?",
+          "fieldId": "interest",
+          "inputType": "radio",
+          "options": ["Product A", "Product B"],
+          "required": true
+        },
+        "x": 300,
+        "y": 80
+      },
+      {
+        "id": "branch-1",
+        "type": "branch",
+        "name": "Route by interest",
+        "parameters": {
+          "sourceField": "interest",
+          "rules": [
+            { "match": "Product A", "action": "chapter", "targetNodeId": "chapter-a" },
+            { "match": "Product B", "action": "chapter", "targetNodeId": "chapter-b" }
+          ]
+        },
+        "x": 520,
+        "y": 80
+      },
+      {
+        "id": "chapter-a",
+        "type": "chapter",
+        "name": "Product A chapter",
+        "parameters": { "chapterId": 1 },
+        "x": 740,
+        "y": 40
+      },
+      {
+        "id": "video-a",
+        "type": "video",
+        "name": "Product A video",
+        "parameters": { "chapterId": 1, "videoId": 1 },
+        "x": 40,
+        "y": 60
+      },
+      {
+        "id": "chapter-b",
+        "type": "chapter",
+        "name": "Product B chapter",
+        "parameters": { "chapterId": 2 },
+        "x": 740,
+        "y": 200
+      },
+      {
+        "id": "video-b",
+        "type": "video",
+        "name": "Product B video",
+        "parameters": { "chapterId": 2, "videoId": 1 },
+        "x": 40,
+        "y": 60
+      },
+      {
+        "id": "outro-1",
+        "type": "outro",
+        "name": "Thank you",
+        "parameters": {
+          "heading": "Thank you",
+          "subtext": "We hope you enjoyed the demo.",
+          "questions": []
+        },
+        "x": 1000,
+        "y": 120
+      }
+    ],
+    "connections": [
+      { "from": "intro-1", "to": "question-1" },
+      { "from": "question-1", "to": "branch-1" },
+      { "from": "branch-1", "to": "chapter-a" },
+      { "from": "branch-1", "to": "chapter-b" },
+      { "from": "chapter-a", "to": "video-a" },
+      { "from": "chapter-b", "to": "video-b" },
+      { "from": "video-a", "to": "outro-1" },
+      { "from": "video-b", "to": "outro-1" }
+    ]
+  },
+  "metadata": {
+    "description": "Question and branch routing to different chapter paths.",
+    "tags": ["branching", "advanced"]
+  }
+}

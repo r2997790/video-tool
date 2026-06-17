@@ -99,13 +99,28 @@ export const api = {
   duplicateFlow: (slug: string, data: { newSlug: string; newProjectName: string; isEnabled?: boolean }) =>
     request(`/api/admin/flows/${encodeURIComponent(slug)}/duplicate`, { method: 'POST', body: JSON.stringify(data) }),
 
-  postHeartbeat: (sessionId: string, chapterId: number, secondsWatched: number) =>
+  postHeartbeat: (sessionId: string, chapterId: number, secondsWatched: number, eventCtx?: { eventSlug?: string; eventOccurrenceStartUtc?: string; viewerEmail?: string }) =>
     request('/api/demo/analytics/heartbeat', {
       method: 'POST',
-      body: JSON.stringify({ sessionId, chapterId, secondsWatched }),
+      body: JSON.stringify({
+        sessionId,
+        chapterId,
+        secondsWatched,
+        eventSlug: eventCtx?.eventSlug,
+        eventOccurrenceStartUtc: eventCtx?.eventOccurrenceStartUtc,
+        viewerEmail: eventCtx?.viewerEmail,
+      }),
     }),
 
-  logEvent: (sessionId: string, eventType: string, data?: { chapterId?: number; toasterId?: number; dataJson?: string; flowSlug?: string }) =>
+  logEvent: (sessionId: string, eventType: string, data?: {
+    chapterId?: number
+    toasterId?: number
+    dataJson?: string
+    flowSlug?: string
+    eventSlug?: string
+    eventOccurrenceStartUtc?: string
+    viewerEmail?: string
+  }) =>
     request('/api/demo/analytics/event', {
       method: 'POST',
       body: JSON.stringify({
@@ -115,6 +130,9 @@ export const api = {
         toasterId: data?.toasterId,
         dataJson: data?.dataJson,
         flowSlug: data?.flowSlug,
+        eventSlug: data?.eventSlug,
+        eventOccurrenceStartUtc: data?.eventOccurrenceStartUtc,
+        viewerEmail: data?.viewerEmail,
       }),
     }),
 
@@ -188,15 +206,122 @@ export const api = {
       }),
     }),
 
-  getScheduledEvent: (slug: string) =>
-    request<import('./types').ScheduledEventPublic>(`/api/demo/event/${encodeURIComponent(slug)}`),
+  getScheduledEvent: (slug: string, sessionId?: string, email?: string) => {
+    const q = new URLSearchParams()
+    if (sessionId) q.set('sessionId', sessionId)
+    if (email) q.set('email', email)
+    const qs = q.toString()
+    return request<import('./types').ScheduledEventPublic>(
+      `/api/demo/event/${encodeURIComponent(slug)}${qs ? `?${qs}` : ''}`,
+    )
+  },
+
+  getEventPrivacy: (slug: string, locale?: string, timezone?: string) => {
+    const q = new URLSearchParams()
+    if (locale) q.set('locale', locale)
+    if (timezone) q.set('timezone', timezone)
+    return request<import('./types').EventPrivacyNotice>(
+      `/api/demo/event/${encodeURIComponent(slug)}/privacy?${q.toString()}`,
+    )
+  },
+
+  registerForEvent: (slug: string, data: {
+    sessionId: string
+    email: string
+    name?: string
+    answersJson?: string
+    consentGiven: boolean
+    locale?: string
+    timezone?: string
+  }) =>
+    request<{ id: number; status: string; email: string }>(
+      `/api/demo/event/${encodeURIComponent(slug)}/register`,
+      { method: 'POST', body: JSON.stringify(data) },
+    ),
 
   getScheduledEvents: () => request<import('./types').ScheduledEvent[]>('/api/admin/events'),
+  getScheduledEventAdmin: (id: number) => request<import('./types').ScheduledEvent>(`/api/admin/events/${id}`),
+  getEventsSummary: () => request<import('./types').EventsSummary>('/api/admin/events/summary'),
+  previewEventOccurrence: (id: number) => request<import('./types').EventOccurrencePreview>(`/api/admin/events/${id}/preview`),
   createScheduledEvent: (data: Record<string, unknown>) =>
     request('/api/admin/events', { method: 'POST', body: JSON.stringify(data) }),
+  createInstantEvent: (data: Record<string, unknown>) =>
+    request<import('./types').ScheduledEvent>('/api/admin/events/instant', { method: 'POST', body: JSON.stringify(data) }),
+  goLiveEvent: (id: number) =>
+    request<import('./types').ScheduledEvent>(`/api/admin/events/${id}/go-live`, { method: 'POST' }),
+  duplicateEvent: (id: number, data?: { newSlug?: string; newTitle?: string }) =>
+    request<import('./types').ScheduledEvent>(`/api/admin/events/${id}/duplicate`, { method: 'POST', body: JSON.stringify(data ?? {}) }),
   updateScheduledEvent: (id: number, data: Record<string, unknown>) =>
     request(`/api/admin/events/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteScheduledEvent: (id: number) => request(`/api/admin/events/${id}`, { method: 'DELETE' }),
+
+  getEventAttendees: (eventId: number, status?: string) =>
+    request<import('./types').EventAttendee[]>(
+      `/api/admin/events/${eventId}/attendees${status ? `?status=${encodeURIComponent(status)}` : ''}`,
+    ),
+  addEventAttendee: (eventId: number, data: { email: string; name?: string; status?: string }) =>
+    request(`/api/admin/events/${eventId}/attendees`, { method: 'POST', body: JSON.stringify(data) }),
+  updateEventAttendee: (eventId: number, attendeeId: number, data: { status?: string; rejectedReason?: string; name?: string }) =>
+    request(`/api/admin/events/${eventId}/attendees/${attendeeId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  importEventAttendeesCsv: (eventId: number, csvContent: string, defaultStatus?: string) =>
+    request<{ imported: number }>(`/api/admin/events/${eventId}/attendees/import-csv`, {
+      method: 'POST',
+      body: JSON.stringify({ csvContent, defaultStatus }),
+    }),
+  exportEventAttendeesCsv: async (eventId: number) => {
+    const res = await fetch(`/api/admin/events/${eventId}/attendees/export-csv`, { credentials: 'include' })
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || res.statusText)
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `event-${eventId}-attendees.csv`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  },
+  syncEventCrm: (eventId: number) =>
+    request<{ imported: number }>(`/api/admin/events/${eventId}/sync-crm`, { method: 'POST' }),
+  getEventAnalytics: (eventId: number) =>
+    request<import('./types').EventAnalyticsResponse>(`/api/admin/events/${eventId}/analytics`),
+
+  getEventEngagementLog: (eventId: number, limit = 100) =>
+    request<import('./types').EngagementSession[]>(`/api/admin/events/${eventId}/engagement?limit=${limit}`),
+
+  getEventLeads: (eventId: number, limit = 200) =>
+    request<import('./types').LeadSubmissionRow[]>(`/api/admin/events/${eventId}/leads?limit=${limit}`),
+
+  exportEventLeadsCsv: async (eventId: number) => {
+    const res = await fetch(`/api/admin/events/${eventId}/leads/export`, { credentials: 'include' })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: res.statusText }))
+      throw new Error(err.error || res.statusText)
+    }
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `event-${eventId}-leads.csv`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  },
+
+  getEventChatSessions: (eventId: number) =>
+    request<Array<{ sessionId: string; lastMessage: string; lastAt: string; count: number }>>(
+      `/api/admin/events/${eventId}/chat/sessions`,
+    ),
+
+  getAccessLists: () => request<import('./types').AccessListEntry[]>('/api/admin/access-lists'),
+  addAccessListEntry: (data: { listType: string; matchType: string; value: string; note?: string }) =>
+    request('/api/admin/access-lists', { method: 'POST', body: JSON.stringify(data) }),
+  deleteAccessListEntry: (id: number) => request(`/api/admin/access-lists/${id}`, { method: 'DELETE' }),
+
+  getPrivacyRegions: () => request<import('./types').PrivacyPolicyRegion[]>('/api/admin/privacy-regions'),
+  updatePrivacyRegion: (regionCode: string, data: { noticeHtml?: string; consentRequired?: boolean; policyUrl?: string }) =>
+    request(`/api/admin/privacy-regions/${encodeURIComponent(regionCode)}`, { method: 'PUT', body: JSON.stringify(data) }),
 
   uploadMedia: (file: File) => {
     const form = new FormData()

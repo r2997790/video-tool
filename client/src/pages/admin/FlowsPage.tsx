@@ -2,14 +2,17 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../../api'
 import { ConfirmModal } from '../../components/ConfirmModal'
+import { FlowLibraryModal } from '../../components/FlowLibraryModal'
 import { FlowsEmptyState } from '../../components/FlowsEmptyState'
 import { NewFlowWizard, type NewFlowWizardResult } from '../../components/NewFlowWizard'
 import { PublishBadge } from '../../components/PublishBadge'
 import { useToast } from '../../components/Toast'
 import { AdminFieldLabel } from '../../components/AdminFieldLabel'
 import { HELP } from '../../adminHelpText'
+import type { FlowLibraryEntry } from '../../flow-editor/flowLibrary'
+import { remapNodeIds } from '../../flow-editor/flowDocument'
 import type { FlowSummary } from '../../types'
-import { copyToClipboard, fullPublicUrl } from '../../utils/slugify'
+import { copyToClipboard, fullPublicUrl, slugify } from '../../utils/slugify'
 
 export function FlowsPage() {
   const navigate = useNavigate()
@@ -17,6 +20,7 @@ export function FlowsPage() {
   const [flows, setFlows] = useState<FlowSummary[]>([])
   const [error, setError] = useState('')
   const [wizardOpen, setWizardOpen] = useState(false)
+  const [libraryOpen, setLibraryOpen] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<FlowSummary | null>(null)
 
   const load = () => api.getFlows().then(setFlows).catch(e => setError(String(e)))
@@ -28,8 +32,26 @@ export function FlowsPage() {
       await api.createFlow({ slug: result.slug, projectName: result.projectName, isEnabled: false })
       setWizardOpen(false)
       toast.success('Flow created')
-      const dest = `/admin/flows/${result.slug}`
-      navigate(dest)
+      navigate(`/admin/flows/${result.slug}`)
+    } catch (e) {
+      toast.error(String(e))
+    }
+  }
+
+  const createFromLibrary = async (entry: FlowLibraryEntry) => {
+    const baseSlug = slugify(entry.document.projectName)
+    const slug = `${baseSlug}-${Date.now().toString(36).slice(-4)}`
+    const project = remapNodeIds(entry.document.project, 'lib')
+    try {
+      await api.createFlow({
+        slug,
+        projectName: entry.document.projectName,
+        projectData: project,
+        isEnabled: false,
+      })
+      setLibraryOpen(false)
+      toast.success('Flow created from template')
+      navigate(`/admin/flows/${slug}`)
     } catch (e) {
       toast.error(String(e))
     }
@@ -65,11 +87,21 @@ export function FlowsPage() {
     toast[ok ? 'success' : 'error'](ok ? 'Link copied' : 'Could not copy link')
   }
 
+  const headerActions = (
+    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <button type="button" className="admin-btn admin-btn-sm" onClick={() => setLibraryOpen(true)}>
+        Import from library
+      </button>
+      <button type="button" className="admin-btn admin-btn-primary" onClick={() => setWizardOpen(true)}>New flow</button>
+    </div>
+  )
+
   if (flows.length === 0 && !error) {
     return (
       <>
         <FlowsEmptyState onCreate={() => setWizardOpen(true)} />
         <NewFlowWizard open={wizardOpen} onClose={() => setWizardOpen(false)} onCreate={createFromWizard} />
+        <FlowLibraryModal open={libraryOpen} onClose={() => setLibraryOpen(false)} onSelect={createFromLibrary} />
       </>
     )
   }
@@ -78,7 +110,7 @@ export function FlowsPage() {
     <>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
         <h2 style={{ margin: 0 }}>Flows</h2>
-        <button type="button" className="admin-btn admin-btn-primary" onClick={() => setWizardOpen(true)}>New flow</button>
+        {headerActions}
       </div>
       <div className="admin-scope-banner">
         Each flow is a shareable demo. Add videos under a flow, set status to <strong>Live</strong>, then copy the public link.
@@ -124,6 +156,7 @@ export function FlowsPage() {
       </div>
 
       <NewFlowWizard open={wizardOpen} onClose={() => setWizardOpen(false)} onCreate={createFromWizard} />
+      <FlowLibraryModal open={libraryOpen} onClose={() => setLibraryOpen(false)} onSelect={createFromLibrary} />
       <ConfirmModal
         open={!!deleteTarget}
         title="Delete flow?"
