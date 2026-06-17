@@ -164,6 +164,15 @@ function VisualFlowEditorCanvas({ state }: VisualFlowEditorProps) {
   const syncingRef = useRef(false)
   const nodesRef = useRef<Node[]>([])
   const fitViewOnceRef = useRef(false)
+  const paletteDragTypeRef = useRef<FlowNode['type'] | null>(null)
+
+  const onPaletteDragStart = useCallback((type: FlowNode['type']) => {
+    paletteDragTypeRef.current = type
+  }, [])
+
+  const onPaletteDragEnd = useCallback(() => {
+    paletteDragTypeRef.current = null
+  }, [])
 
   useEffect(() => {
     nodesRef.current = nodes
@@ -290,7 +299,8 @@ function VisualFlowEditorCanvas({ state }: VisualFlowEditorProps) {
     setDragOverChapterId(null)
     setInsertionIndex(null)
 
-    const nodeType = getPaletteDragType(e.dataTransfer)
+    const nodeType = paletteDragTypeRef.current ?? getPaletteDragType(e.dataTransfer)
+    paletteDragTypeRef.current = null
     if (!nodeType) return
 
     const flowPosition = screenToFlowPosition({ x: e.clientX, y: e.clientY })
@@ -473,7 +483,10 @@ function VisualFlowEditorCanvas({ state }: VisualFlowEditorProps) {
         >
           <Background gap={20} color="#2e3032" />
           <Controls />
-          <VisualNodePalette />
+          <VisualNodePalette
+            onPaletteDragStart={onPaletteDragStart}
+            onPaletteDragEnd={onPaletteDragEnd}
+          />
           <MiniMap
             className="flow-minimap"
             nodeColor={n => FLOW_NODE_COLORS[(n.data as { nodeType: string }).nodeType] || '#666'}
