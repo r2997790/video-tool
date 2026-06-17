@@ -25,7 +25,6 @@ import {
   chapterLabel,
   nodeSummary,
   projectToTimeline,
-  resolveInsertTarget,
   resolveTimelineDragId,
   rowKey,
   segmentSortableId,
@@ -34,7 +33,6 @@ import {
   type TimelineRow,
   videoLabel,
 } from './flowTimeline'
-import { getChapterIdFromNode } from './flowRuntime'
 import { insertNodeWithSelection } from './flowInsert'
 import type { FlowEditorState } from './useFlowEditorState'
 

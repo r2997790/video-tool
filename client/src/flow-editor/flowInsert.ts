@@ -49,7 +49,7 @@ export function insertNodeAtTarget(
   target: InsertTarget,
   toast?: { error: (msg: string) => void },
 ): FlowNode | null {
-  const { project, applyEdit, chapters, chapterVideos, selectedNode, selectNode } = state
+  const { project, applyEdit, chapters, chapterVideos, selectNode } = state
 
   if (target.scope === 'reject') {
     toast?.error(target.message)
