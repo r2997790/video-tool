@@ -23,7 +23,7 @@ interface FlowEditorToolbarProps {
 
 const ADD_STEP_GROUPS: { label: string; types: FlowNode['type'][] }[] = [
   { label: 'Structure', types: ['chapter', 'video'] },
-  { label: 'Playback', types: ['intro', 'outro', 'event'] },
+  { label: 'Registration', types: ['event'] },
   { label: 'Interaction', types: ['question', 'pause', 'aichat', 'toaster'] },
   { label: 'Logic', types: ['branch'] },
 ]

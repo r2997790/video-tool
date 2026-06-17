@@ -11,7 +11,7 @@ const ctx = {
 }
 
 function buildChapterFlow(): FlowProject {
-  const intro = newNode('intro', 'Intro')
+  const start = newNode('question', 'Start')
   const chapter = newNode('chapter', 'Chapter block')
   chapter.parameters = { chapterId: 1 }
   const video = newNode('video', 'Video 1')
@@ -21,9 +21,9 @@ function buildChapterFlow(): FlowProject {
 
   return {
     projectName: 'Test',
-    nodes: [intro, chapter, video, q1, q2],
+    nodes: [start, chapter, video, q1, q2],
     connections: [
-      { from: intro.id, to: chapter.id },
+      { from: start.id, to: chapter.id },
       { from: chapter.id, to: video.id },
       { from: video.id, to: q1.id },
       { from: q1.id, to: q2.id },
@@ -58,24 +58,24 @@ describe('applyFlowEdit sync', () => {
 
   it('connectNodes and disconnectEdge produce consistent spine', () => {
     let project = buildChapterFlow()
-    const intro = project.nodes.find(n => n.type === 'intro')!
+    const start = project.nodes.find(n => n.name === 'Start')!
     const chapter = project.nodes.find(n => n.type === 'chapter')!
 
     project = applyFlowEdit(project, {
       type: 'disconnectEdge',
-      from: intro.id,
+      from: start.id,
       to: chapter.id,
     }, ctx)
 
-    expect(project.connections.some(c => c.from === intro.id && c.to === chapter.id)).toBe(false)
+    expect(project.connections.some(c => c.from === start.id && c.to === chapter.id)).toBe(false)
 
     project = applyFlowEdit(project, {
       type: 'connectNodes',
-      from: intro.id,
+      from: start.id,
       to: chapter.id,
     }, ctx)
 
-    expect(project.connections.some(c => c.from === intro.id && c.to === chapter.id)).toBe(true)
+    expect(project.connections.some(c => c.from === start.id && c.to === chapter.id)).toBe(true)
   })
 
   it('moveIntoChapter and moveToTopLevel round-trip', () => {
@@ -99,6 +99,25 @@ describe('applyFlowEdit sync', () => {
     expect(findChapterAncestor(project, q.id)?.id).toBe(chapter.id)
   })
 
+  it('moveNodesIntoChapter preserves order', () => {
+    let project = buildChapterFlow()
+    const chapter = project.nodes.find(n => n.type === 'chapter')!
+    const q1 = project.nodes.find(n => n.name === 'Question A')!
+    const q2 = project.nodes.find(n => n.name === 'Question B')!
+
+    project = applyFlowEdit(project, { type: 'moveToTopLevel', nodeId: q1.id }, ctx)
+    project = applyFlowEdit(project, { type: 'moveToTopLevel', nodeId: q2.id }, ctx)
+
+    project = applyFlowEdit(project, {
+      type: 'moveNodesIntoChapter',
+      nodeIds: [q2.id, q1.id],
+      chapterNodeId: chapter.id,
+    }, ctx)
+
+    expect(findChapterAncestor(project, q1.id)?.id).toBe(chapter.id)
+    expect(findChapterAncestor(project, q2.id)?.id).toBe(chapter.id)
+  })
+
   it('visual connect path matches timeline insert for nested question', () => {
     const project = buildChapterFlow()
     const chapter = project.nodes.find(n => n.type === 'chapter')!
@@ -116,7 +135,6 @@ describe('applyFlowEdit sync', () => {
       to: (() => { const n = newNode('question', 'Via visual'); return n.id })(),
     }, ctx)
 
-    // Visual connect alone doesn't insert node — structural parity is via shared applyFlowEdit
     const newQ = newNode('question', 'Shared')
     const viaInsert = applyFlowEdit(project, {
       type: 'insert',

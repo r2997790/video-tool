@@ -27,6 +27,11 @@ public static class VideoLinkParser
                 var id = parts.LastOrDefault()?.Split('?').FirstOrDefault();
                 if (!string.IsNullOrEmpty(id)) return ("youtube", id);
             }
+            if (trimmed.Contains("youtube.com/live/", StringComparison.OrdinalIgnoreCase))
+            {
+                var id = trimmed.Split("/live/", StringSplitOptions.None).LastOrDefault()?.Split('?')[0];
+                if (!string.IsNullOrEmpty(id)) return ("youtube", id);
+            }
             if (IsDirectVideo(trimmed))
                 return ("direct", trimmed);
 

@@ -135,18 +135,16 @@ public static class DatabaseSeeder
             projectName = "Test Demo (YouTube)",
             nodes = new object[]
             {
-                new { id = "intro-1", type = "intro", name = "Welcome", x = 80, y = 120, parameters = new { heading = "Test demo flow", subtext = "Sample flow for QA — plays three YouTube chapters.", questions = Array.Empty<object>() } },
+                new { id = "start-1", type = "question", name = "Welcome", x = 80, y = 120, parameters = new { prompt = "Test demo flow", subtext = "Sample flow for QA — plays three YouTube chapters.", fieldId = "welcome", inputType = "text", required = false } },
                 new { id = "ch-1", type = "chapter", name = "Overview", x = 320, y = 120, parameters = new { chapterId = overview.Id } },
                 new { id = "ch-2", type = "chapter", name = "Direct Intro", x = 560, y = 120, parameters = new { chapterId = directIntro.Id } },
                 new { id = "ch-3", type = "chapter", name = "Venta Intro", x = 800, y = 120, parameters = new { chapterId = ventaIntro.Id } },
-                new { id = "outro-1", type = "outro", name = "Thanks", x = 1040, y = 120, parameters = new { heading = "End of test demo", subtext = "", questions = Array.Empty<object>() } },
             },
             connections = new[]
             {
-                new { from = "intro-1", to = "ch-1" },
+                new { from = "start-1", to = "ch-1" },
                 new { from = "ch-1", to = "ch-2" },
                 new { from = "ch-2", to = "ch-3" },
-                new { from = "ch-3", to = "outro-1" },
             }
         };
 

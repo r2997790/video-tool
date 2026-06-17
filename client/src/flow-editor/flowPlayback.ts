@@ -1,8 +1,30 @@
 import type { FlowNode, FlowProject, ToasterType, VideoPausePoint, VideoToaster, Chapter } from '../types'
 import { getChapterIdFromNode, getNextNodes, isPlaybackTriggerNode } from './flowRuntime'
+import { parseVideoLink } from '../utils/videoLink'
 
 export type FlowToasterTrigger = VideoToaster & { flowNodeId: string; source: 'flow' }
 export type FlowPauseTrigger = VideoPausePoint & { flowNodeId: string; source: 'flow' }
+export type FlowQuestionTrigger = {
+  flowNodeId: string
+  source: 'flow'
+  triggerKey: string
+  chapterId: number | null
+  triggerAtSeconds: number
+  prompt: string
+  fieldId: string
+  inputType: string
+  options?: string[]
+  required: boolean
+  placeholder?: string | null
+}
+export type FlowAichatTrigger = {
+  flowNodeId: string
+  source: 'flow'
+  triggerKey: string
+  chapterId: number | null
+  triggerAtSeconds: number
+  node: FlowNode
+}
 
 function flowNodeToToaster(node: FlowNode, chapterId: number | null): FlowToasterTrigger {
   const p = node.parameters
@@ -44,27 +66,62 @@ function flowNodeToPause(node: FlowNode, chapterId: number | null): FlowPauseTri
   }
 }
 
+function flowNodeToQuestion(node: FlowNode, chapterId: number | null): FlowQuestionTrigger {
+  const p = node.parameters
+  const options = (p.options as string[]) || []
+  return {
+    flowNodeId: node.id,
+    source: 'flow',
+    triggerKey: `flow-${node.id}`,
+    chapterId,
+    triggerAtSeconds: (p.triggerAtSeconds as number) || 0,
+    prompt: (p.prompt as string) || 'Please answer',
+    fieldId: (p.fieldId as string) || 'answer',
+    inputType: (p.inputType as string) || 'text',
+    options: options.length ? options : undefined,
+    required: p.required !== false,
+    placeholder: (p.placeholder as string) || null,
+  }
+}
+
+function flowNodeToAichat(node: FlowNode, chapterId: number | null): FlowAichatTrigger {
+  return {
+    flowNodeId: node.id,
+    source: 'flow',
+    triggerKey: `flow-${node.id}`,
+    chapterId,
+    triggerAtSeconds: (node.parameters.triggerAtSeconds as number) || 0,
+    node,
+  }
+}
+
 function collectEventsFromVideoNode(flow: FlowProject, videoNodeId: string, chapterId: number | null): {
   toasters: FlowToasterTrigger[]
   pauses: FlowPauseTrigger[]
+  questions: FlowQuestionTrigger[]
+  aichats: FlowAichatTrigger[]
 } {
   const toasters: FlowToasterTrigger[] = []
   const pauses: FlowPauseTrigger[] = []
+  const questions: FlowQuestionTrigger[] = []
+  const aichats: FlowAichatTrigger[] = []
   const seen = new Set<string>()
 
   const walk = (nodeId: string) => {
     for (const next of getNextNodes(flow, nodeId)) {
       if (seen.has(next.id)) continue
-      if (!isPlaybackTriggerNode(next)) break
+      if (!isPlaybackTriggerNode(next, flow)) break
       seen.add(next.id)
       if (next.type === 'toaster') toasters.push(flowNodeToToaster(next, chapterId))
       if (next.type === 'pause') pauses.push(flowNodeToPause(next, chapterId))
+      if (next.type === 'question') questions.push(flowNodeToQuestion(next, chapterId))
+      if (next.type === 'aichat') aichats.push(flowNodeToAichat(next, chapterId))
       walk(next.id)
     }
   }
 
   walk(videoNodeId)
-  return { toasters, pauses }
+  return { toasters, pauses, questions, aichats }
 }
 
 export function collectChapterPlaybackTriggers(
@@ -74,37 +131,49 @@ export function collectChapterPlaybackTriggers(
 ): {
   toasters: FlowToasterTrigger[]
   pauses: FlowPauseTrigger[]
+  questions: FlowQuestionTrigger[]
+  aichats: FlowAichatTrigger[]
 } {
-  if (!flow || activeChapterId == null) return { toasters: [], pauses: [] }
+  if (!flow || activeChapterId == null) return { toasters: [], pauses: [], questions: [], aichats: [] }
 
   if (activeVideoNodeId) {
     const videoNode = flow.nodes.find(n => n.id === activeVideoNodeId)
     if (videoNode?.type === 'video') {
       const chId = getChapterIdFromNode(videoNode) ?? activeChapterId
-      const { toasters, pauses } = collectEventsFromVideoNode(flow, activeVideoNodeId, chId)
+      const { toasters, pauses, questions, aichats } = collectEventsFromVideoNode(flow, activeVideoNodeId, chId)
+      const sortByTime = <T extends { triggerAtSeconds: number }>(a: T, b: T) => a.triggerAtSeconds - b.triggerAtSeconds
       return {
-        toasters: toasters.sort((a, b) => a.triggerAtSeconds - b.triggerAtSeconds),
-        pauses: pauses.sort((a, b) => a.triggerAtSeconds - b.triggerAtSeconds),
+        toasters: toasters.sort(sortByTime),
+        pauses: pauses.sort(sortByTime),
+        questions: questions.sort(sortByTime),
+        aichats: aichats.sort(sortByTime),
       }
     }
   }
 
   const toasters: FlowToasterTrigger[] = []
   const pauses: FlowPauseTrigger[] = []
+  const questions: FlowQuestionTrigger[] = []
+  const aichats: FlowAichatTrigger[] = []
   const chapterNodes = flow.nodes.filter(n =>
     (n.type === 'chapter' || n.type === 'video') && getChapterIdFromNode(n) === activeChapterId)
 
   for (const ch of chapterNodes) {
     const videoNode = ch.type === 'video' ? ch : getNextNodes(flow, ch.id).find(n => n.type === 'video')
     const fromId = videoNode?.id ?? ch.id
-    const { toasters: t, pauses: p } = collectEventsFromVideoNode(flow, fromId, activeChapterId)
+    const { toasters: t, pauses: p, questions: q, aichats: a } = collectEventsFromVideoNode(flow, fromId, activeChapterId)
     toasters.push(...t)
     pauses.push(...p)
+    questions.push(...q)
+    aichats.push(...a)
   }
 
+  const sortByTime = <T extends { triggerAtSeconds: number }>(a: T, b: T) => a.triggerAtSeconds - b.triggerAtSeconds
   return {
-    toasters: toasters.sort((a, b) => a.triggerAtSeconds - b.triggerAtSeconds),
-    pauses: pauses.sort((a, b) => a.triggerAtSeconds - b.triggerAtSeconds),
+    toasters: toasters.sort(sortByTime),
+    pauses: pauses.sort(sortByTime),
+    questions: questions.sort(sortByTime),
+    aichats: aichats.sort(sortByTime),
   }
 }
 
@@ -125,23 +194,49 @@ export function mergePauseTriggers(api: VideoPausePoint[], flow: FlowPauseTrigge
 export function resolveChapterVideo(
   chapter: Chapter | null,
   videoId: number | null,
-): { name: string; videoType: string; videoValue: string; duration?: string } | null {
+): { name: string; videoType: string; videoValue: string; duration?: string; isLive?: boolean } | null {
   if (!chapter) return null
   if (videoId != null && chapter.videos?.length) {
     const v = chapter.videos.find(x => x.id === videoId)
     if (v) {
+      const parsed = parseVideoLink(v.videoValue || v.videoLink)
       return {
         name: v.title || chapter.name,
-        videoType: v.videoType || 'none',
-        videoValue: v.videoValue || v.videoLink || '',
+        videoType: v.videoType || parsed.type,
+        videoValue: v.videoValue || parsed.value || v.videoLink || '',
         duration: v.duration,
+        isLive: parsed.isLive,
       }
     }
   }
+  const parsed = parseVideoLink(chapter.videoValue || chapter.videoLink)
   return {
     name: chapter.name,
-    videoType: chapter.videoType,
-    videoValue: chapter.videoValue,
+    videoType: chapter.videoType || parsed.type,
+    videoValue: chapter.videoValue || parsed.value || chapter.videoLink,
     duration: chapter.duration,
+    isLive: parsed.isLive,
   }
+}
+
+export function resolveVideoNodePlayback(
+  chapter: Chapter | null,
+  videoId: number | null,
+  videoNode?: FlowNode | null,
+): { name: string; videoType: string; videoValue: string; duration?: string; isLive?: boolean } | null {
+  if (videoNode?.type === 'video') {
+    const source = (videoNode.parameters.videoSource as string) || 'library'
+    if (source !== 'library') {
+      const link = (videoNode.parameters.videoLink as string) || ''
+      const parsed = parseVideoLink(link)
+      const isLive = !!videoNode.parameters.isLive || parsed.isLive
+      return {
+        name: videoNode.name,
+        videoType: source === 'youtube' || parsed.type === 'youtube' ? 'youtube' : 'direct',
+        videoValue: parsed.value || link,
+        isLive,
+      }
+    }
+  }
+  return resolveChapterVideo(chapter, videoId)
 }

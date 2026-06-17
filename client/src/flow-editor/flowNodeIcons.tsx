@@ -15,11 +15,6 @@ function SvgIcon({ color, children }: IconProps & { children: ReactNode }) {
 }
 
 const icons: Record<FlowNode['type'], (color: string) => ReactNode> = {
-  intro: (color) => (
-    <SvgIcon color={color}>
-      <path d="M3 4h12M3 9h8M3 14h10" />
-    </SvgIcon>
-  ),
   event: (color) => (
     <SvgIcon color={color}>
       <circle cx="9" cy="10" r="6" />
@@ -63,12 +58,6 @@ const icons: Record<FlowNode['type'], (color: string) => ReactNode> = {
   aichat: (color) => (
     <SvgIcon color={color}>
       <path d="M4 5h10a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H8l-3 2v-2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z" />
-    </SvgIcon>
-  ),
-  outro: (color) => (
-    <SvgIcon color={color}>
-      <path d="M4 6h10M4 10h7M4 14h9" />
-      <path d="M13 12l2 2-2 2" />
     </SvgIcon>
   ),
 }

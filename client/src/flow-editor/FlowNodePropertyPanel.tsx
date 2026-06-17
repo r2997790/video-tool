@@ -1,5 +1,5 @@
 import type { FlowNode, ScheduledEvent, ToasterType, AdminChapter, AdminChapterVideo } from '../types'
-import type { BranchAction, FlowBranchRule, FlowQuestionField, QuestionInputType } from './flowTypes'
+import type { BranchAction, FlowBranchRule } from './flowTypes'
 import { ChapterNodeEditor } from './ChapterNodeEditor'
 import { AdminFieldLabel } from '../components/AdminFieldLabel'
 import { FieldHelp } from '../components/FieldHelp'
@@ -18,17 +18,6 @@ interface Props {
   onDelete: () => void
 }
 
-function updateQuestions(
-  questions: FlowQuestionField[],
-  index: number,
-  patch: Partial<FlowQuestionField>,
-  onUpdate: Props['onUpdate'],
-) {
-  const next = [...questions]
-  next[index] = { ...next[index], ...patch }
-  onUpdate({ parameters: { questions: next } })
-}
-
 export function FlowNodePropertyPanel({
   flowSlug,
   selected,
@@ -42,139 +31,31 @@ export function FlowNodePropertyPanel({
   onUpdate,
   onDelete,
 }: Props) {
-  const questions = (selected.parameters.questions as FlowQuestionField[]) || []
-
   return (
     <div className="flow-panel-form">
       <AdminFieldLabel label="Name" help={HELP.flowEditor.nodeName}>
         <input className="admin-input" value={selected.name} onChange={e => onUpdate({ name: e.target.value })} />
       </AdminFieldLabel>
-      {(selected.type === 'intro' || selected.type === 'outro') && (
-        <>
-          <AdminFieldLabel label="Heading" help={HELP.flowEditor.introHeading}>
-            <input className="admin-input" value={(selected.parameters.heading as string) || ''}
-              onChange={e => onUpdate({ parameters: { heading: e.target.value } })} />
-          </AdminFieldLabel>
-          <AdminFieldLabel label="Subtext" help={HELP.flowEditor.introSubtext}>
-            <input className="admin-input" value={(selected.parameters.subtext as string) || ''}
-              onChange={e => onUpdate({ parameters: { subtext: e.target.value } })} />
-          </AdminFieldLabel>
-          <div className="admin-field">
-            <div className="admin-label-row">
-              <span className="admin-label-text">Questions</span>
-              <FieldHelp text="Repeatable form fields shown on the intro/outro screen. Each needs a unique Field ID for branch routing." />
-            </div>            {questions.map((q, qi) => (
-              <div key={qi} className="flow-branch-rule">
-                <div className="admin-label-row"><span className="admin-label-text">Field ID</span><FieldHelp text={HELP.flowEditor.questionFieldId} /></div>
-                <input className="admin-input" placeholder="Field ID" value={q.id}
-                  onChange={e => updateQuestions(questions, qi, { id: e.target.value }, onUpdate)} />
-                <div className="admin-label-row"><span className="admin-label-text">Label</span><FieldHelp text={HELP.flowEditor.questionLabel} /></div>
-                <input className="admin-input" placeholder="Label" value={q.label}
-                  onChange={e => updateQuestions(questions, qi, { label: e.target.value }, onUpdate)} />
-                <div className="admin-label-row"><span className="admin-label-text">Input type</span><FieldHelp text={HELP.flowEditor.questionInputType} /></div>                <select className="admin-input" value={q.inputType || q.type || 'text'}
-                  onChange={e => updateQuestions(questions, qi, {
-                    inputType: e.target.value as QuestionInputType,
-                    type: e.target.value,
-                  }, onUpdate)}>
-                  <option value="text">Free text</option>
-                  <option value="textarea">Multiline text</option>
-                  <option value="radio">Radio buttons</option>
-                  <option value="multiselect">Multi choice</option>
-                  <option value="date">Date</option>
-                  <option value="datetime">Date / time</option>
-                  <option value="email">Email</option>
-                </select>
-                {['radio', 'multiselect'].includes(q.inputType || q.type || '') && (
-                  <>
-                    <div className="admin-label-row"><span className="admin-label-text">Options</span><FieldHelp text={HELP.flowEditor.questionOptions} /></div>
-                    <input className="admin-input" placeholder="Options (comma-separated)"
-                      value={(q.options || []).join(', ')}
-                      onChange={e => updateQuestions(questions, qi, {
-                        options: e.target.value.split(',').map(s => s.trim()).filter(Boolean),
-                      }, onUpdate)} />
-                  </>
-                )}
-                <div className="admin-label-row"><span className="admin-label-text">Placeholder</span><FieldHelp text={HELP.flowEditor.questionPlaceholder} /></div>
-                <input className="admin-input" placeholder="Placeholder" value={q.placeholder || ''}
-                  onChange={e => updateQuestions(questions, qi, { placeholder: e.target.value }, onUpdate)} />
-                <label>
-                  <input type="checkbox" checked={q.required !== false}
-                    onChange={e => updateQuestions(questions, qi, { required: e.target.checked }, onUpdate)} />
-                  {' '}Required <FieldHelp text={HELP.flowEditor.questionRequired} />
-                </label>                <button type="button" className="admin-btn admin-btn-danger admin-btn-sm"
-                  onClick={() => onUpdate({ parameters: { questions: questions.filter((_, i) => i !== qi) } })}>
-                  Remove question
-                </button>
-              </div>
-            ))}
-            <button type="button" className="admin-btn admin-btn-sm" onClick={() => onUpdate({
-              parameters: {
-                questions: [...questions, { id: `q${Date.now()}`, label: 'New question', type: 'text', required: true }],
-              },
-            })}>Add question</button>
-          </div>
-        </>
-      )}
 
       {selected.type === 'event' && (
         <>
-          <AdminFieldLabel label="Source" help={HELP.flowEditor.eventSource}>
-            <select className="admin-input" value={(selected.parameters.mode as string) || 'inline'}
-              onChange={e => onUpdate({ parameters: { mode: e.target.value } })}>
-              <option value="inline">Inline countdown settings</option>
-              <option value="slug">Link to scheduled event</option>
+          <AdminFieldLabel label="Scheduled event" help={HELP.flowEditor.eventSlug}>
+            <select className="admin-input" value={(selected.parameters.eventSlug as string) || ''}
+              onChange={e => onUpdate({ parameters: { eventSlug: e.target.value } })}>
+              <option value="">Select event…</option>
+              {events.map(ev => <option key={ev.id} value={ev.slug}>{ev.title} ({ev.slug})</option>)}
             </select>
           </AdminFieldLabel>
-          {(selected.parameters.mode as string) === 'slug' ? (
-            <AdminFieldLabel label="Scheduled event" help={HELP.flowEditor.eventSlug}>
-              <select className="admin-input" value={(selected.parameters.eventSlug as string) || ''}
-                onChange={e => onUpdate({ parameters: { eventSlug: e.target.value } })}>
-                <option value="">Select event…</option>
-                {events.map(ev => <option key={ev.id} value={ev.slug}>{ev.title} ({ev.slug})</option>)}
-              </select>
-            </AdminFieldLabel>
-          ) : (
-            <>
-              <AdminFieldLabel label="Title" help={HELP.flowEditor.eventTitle}>
-                <input className="admin-input" value={(selected.parameters.title as string) || ''}
-                  onChange={e => onUpdate({ parameters: { title: e.target.value } })} />
-              </AdminFieldLabel>
-              <AdminFieldLabel label="Starts at (UTC ISO)" help={HELP.flowEditor.eventStartsAt}>
-                <input className="admin-input" value={(selected.parameters.startsAtUtc as string) || ''}
-                  onChange={e => onUpdate({ parameters: { startsAtUtc: e.target.value } })} />
-              </AdminFieldLabel>
-              <AdminFieldLabel label="Heading" help={HELP.flowEditor.eventHeading}>
-                <input className="admin-input" value={(selected.parameters.holdingHeading as string) || ''}
-                  onChange={e => onUpdate({ parameters: { holdingHeading: e.target.value } })} />
-              </AdminFieldLabel>
-              <AdminFieldLabel label="Message" help={HELP.flowEditor.eventMessage}>
-                <textarea className="admin-textarea" value={(selected.parameters.holdingMessage as string) || ''}
-                  onChange={e => onUpdate({ parameters: { holdingMessage: e.target.value } })} />
-              </AdminFieldLabel>
-              <AdminFieldLabel label="Hero image URL" help={HELP.flowEditor.eventImageUrl}>
-                <input className="admin-input" value={(selected.parameters.holdingImageUrl as string) || ''}
-                  onChange={e => onUpdate({ parameters: { holdingImageUrl: e.target.value } })} />
-              </AdminFieldLabel>
-              <AdminFieldLabel label="Preview video type" help={HELP.flowEditor.eventVideoType}>
-                <select className="admin-input" value={(selected.parameters.holdingVideoType as string) || 'none'}
-                  onChange={e => onUpdate({ parameters: { holdingVideoType: e.target.value } })}>
-                  <option value="none">None</option>
-                  <option value="youtube">YouTube</option>
-                  <option value="direct">Direct URL</option>
-                </select>
-              </AdminFieldLabel>
-              <AdminFieldLabel label="Preview video URL / ID" help={HELP.flowEditor.eventVideoUrl}>
-                <input className="admin-input" value={(selected.parameters.holdingVideoUrl as string) || ''}
-                  onChange={e => onUpdate({ parameters: { holdingVideoUrl: e.target.value } })} />
-              </AdminFieldLabel>
-              <AdminFieldLabel label="Default chapter after countdown" help={HELP.flowEditor.eventDefaultChapter}>
-                <select className="admin-input" value={(selected.parameters.defaultChapterId as number) || ''}
-                  onChange={e => onUpdate({ parameters: { defaultChapterId: parseInt(e.target.value, 10) } })}>
-                  {chapters.map(ch => <option key={ch.id} value={ch.id}>{ch.name}</option>)}
-                </select>
-              </AdminFieldLabel>
-            </>
-          )}        </>
+          <AdminFieldLabel label="Heading override" help="Optional — defaults to the event registration form heading.">
+            <input className="admin-input" value={(selected.parameters.heading as string) || ''}
+              onChange={e => onUpdate({ parameters: { heading: e.target.value } })} />
+          </AdminFieldLabel>
+          <AdminFieldLabel label="Subtext override" help="Optional supporting text below the heading.">
+            <input className="admin-input" value={(selected.parameters.subtext as string) || ''}
+              onChange={e => onUpdate({ parameters: { subtext: e.target.value } })} />
+          </AdminFieldLabel>
+          <p className="admin-help-text">Countdown and lobby video are configured under Events admin, not here.</p>
+        </>
       )}
 
       {selected.type === 'question' && (
@@ -222,7 +103,13 @@ export function FlowNodePropertyPanel({
           <AdminFieldLabel label="Placeholder" help={HELP.flowEditor.questionPlaceholder}>
             <input className="admin-input" value={(selected.parameters.placeholder as string) || ''}
               onChange={e => onUpdate({ parameters: { placeholder: e.target.value } })} />
-          </AdminFieldLabel>        </>
+          </AdminFieldLabel>
+          <AdminFieldLabel label="Trigger at (seconds)" help="When attached to a video, show at this timestamp. Leave 0 for spine placement before/after video.">
+            <input className="admin-input" type="number" min={0}
+              value={(selected.parameters.triggerAtSeconds as number) || 0}
+              onChange={e => onUpdate({ parameters: { triggerAtSeconds: parseInt(e.target.value, 10) || 0 } })} />
+          </AdminFieldLabel>
+        </>
       )}
 
       {selected.type === 'branch' && (
@@ -299,6 +186,11 @@ export function FlowNodePropertyPanel({
             <input className="admin-input" value={(selected.parameters.heading as string) || ''}
               onChange={e => onUpdate({ parameters: { heading: e.target.value } })} />
           </AdminFieldLabel>
+          <AdminFieldLabel label="Trigger at (seconds)" help="When attached to a video, start at this timestamp. Leave 0 for spine segments.">
+            <input className="admin-input" type="number" min={0}
+              value={(selected.parameters.triggerAtSeconds as number) || 0}
+              onChange={e => onUpdate({ parameters: { triggerAtSeconds: parseInt(e.target.value, 10) || 0 } })} />
+          </AdminFieldLabel>
           <AdminFieldLabel label="Duration (seconds)" help={HELP.flowEditor.aichatDuration}>
             <input className="admin-input" type="number" min={10}
               value={(selected.parameters.durationSeconds as number) || 60}
@@ -359,34 +251,68 @@ export function FlowNodePropertyPanel({
             <select
               className="admin-input"
               value={(selected.parameters.chapterId as number) || ''}
-              onChange={e => onUpdate({ parameters: { chapterId: parseInt(e.target.value, 10), videoId: 0 } })}
+              onChange={e => onUpdate({ parameters: { ...selected.parameters, chapterId: parseInt(e.target.value, 10), videoId: 0 } })}
             >
               <option value="">Select chapter…</option>
               {chapters.map(ch => <option key={ch.id} value={ch.id}>{ch.name}</option>)}
             </select>
           </AdminFieldLabel>
-          <AdminFieldLabel label="Video clip" help="Which video in this chapter block to play.">
+          <AdminFieldLabel label="Video source" help="Library clip, YouTube URL/ID, or direct MP4/HLS. YouTube live URLs are supported.">
             <select
               className="admin-input"
-              value={(selected.parameters.videoId as number) || ''}
-              onChange={e => {
-                const videoId = parseInt(e.target.value, 10)
-                const v = chapterVideos.find(x => x.id === videoId)
-                onUpdate({
-                  name: v?.title || selected.name,
-                  parameters: { videoId, chapterId: selected.parameters.chapterId },
-                })
-              }}
+              value={(selected.parameters.videoSource as string) || 'library'}
+              onChange={e => onUpdate({ parameters: { ...selected.parameters, videoSource: e.target.value } })}
             >
-              <option value="">Select video…</option>
-              {chapterVideos
-                .filter(v => v.chapterId === (selected.parameters.chapterId as number))
-                .sort((a, b) => a.sortOrder - b.sortOrder)
-                .map(v => (
-                  <option key={v.id} value={v.id}>{v.title}{v.duration ? ` (${v.duration})` : ''}</option>
-                ))}
+              <option value="library">Chapter library clip</option>
+              <option value="youtube">YouTube (VOD or live)</option>
+              <option value="direct">Direct URL</option>
             </select>
           </AdminFieldLabel>
+          {((selected.parameters.videoSource as string) || 'library') === 'library' ? (
+            <AdminFieldLabel label="Video clip" help="Which video in this chapter block to play.">
+              <select
+                className="admin-input"
+                value={(selected.parameters.videoId as number) || ''}
+                onChange={e => {
+                  const videoId = parseInt(e.target.value, 10)
+                  const v = chapterVideos.find(x => x.id === videoId)
+                  onUpdate({
+                    name: v?.title || selected.name,
+                    parameters: { ...selected.parameters, videoId, chapterId: selected.parameters.chapterId },
+                  })
+                }}
+              >
+                <option value="">Select video…</option>
+                {chapterVideos
+                  .filter(v => v.chapterId === (selected.parameters.chapterId as number))
+                  .sort((a, b) => a.sortOrder - b.sortOrder)
+                  .map(v => (
+                    <option key={v.id} value={v.id}>{v.title}{v.duration ? ` (${v.duration})` : ''}</option>
+                  ))}
+              </select>
+            </AdminFieldLabel>
+          ) : (
+            <>
+              <AdminFieldLabel label="Video URL or YouTube ID" help={HELP.chapters.videoLink}>
+                <input
+                  className="admin-input"
+                  placeholder="YouTube ID, youtube.com/live/…, or MP4 URL"
+                  value={(selected.parameters.videoLink as string) || ''}
+                  onChange={e => onUpdate({ parameters: { ...selected.parameters, videoLink: e.target.value } })}
+                />
+              </AdminFieldLabel>
+              <div className="admin-field">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={!!selected.parameters.isLive}
+                    onChange={e => onUpdate({ parameters: { ...selected.parameters, isLive: e.target.checked } })}
+                  />
+                  {' '}YouTube live stream (do not auto-advance on end)
+                </label>
+              </div>
+            </>
+          )}
         </>
       )}
 

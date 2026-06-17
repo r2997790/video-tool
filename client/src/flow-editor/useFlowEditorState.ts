@@ -3,7 +3,7 @@ import { api } from '../api'
 import type { AdminChapter, AdminChapterVideo, FlowNode, FlowProject, ScheduledEvent } from '../types'
 import { applyFlowEdit, type FlowEdit } from './applyFlowEdit'
 import { emptyProject } from './flowSchema'
-import { migrateLegacyPlaybackToFlow } from './flowMigration'
+import { migrateIntroOutroNodes, migrateLegacyEventNodes, migrateLegacyPlaybackToFlow } from './flowMigration'
 import { ensureLegacyChapterVideos } from './flowTimeline'
 import { validateFlowProject } from './validateFlow'
 
@@ -59,6 +59,8 @@ export function useFlowEditorState(flowSlug: string) {
       setFlowEnabled(!!flowRes.isEnabled)
       setProjectName(flowRes.projectName || flowRes.projectData.projectName || 'Demo Flow')
       let pd = flowRes.projectData as FlowProject
+      pd = migrateIntroOutroNodes(pd)
+      pd = migrateLegacyEventNodes(pd)
       pd = migrateLegacyPlaybackToFlow(pd, vidRes, toasterRes, pauseRes)
       pd = ensureLegacyChapterVideos(pd, vidRes)
       setProject({ ...pd, projectName: flowRes.projectName || pd.projectName })

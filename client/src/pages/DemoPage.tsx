@@ -3,11 +3,11 @@ import { useParams, useSearchParams } from 'react-router-dom'
 import * as signalR from '@microsoft/signalr'
 import { api, getSessionId } from '../api'
 import { Button } from '../components/Button'
-import { FlowEventOverlay } from '../components/FlowEventOverlay'
+import { FlowEventRegistrationOverlay } from '../components/FlowEventRegistrationOverlay'
 import { FlowOverlay } from '../components/FlowOverlay'
 import { VideoPlayer } from '../components/VideoPlayer'
 import { advanceFromNode, initializeFlow, isFlowBlockingNode, onVideoEnded, shouldShowFlowOverlay } from '../flow-editor/flowRuntime'
-import { collectChapterPlaybackTriggers, mergePauseTriggers, mergeToasterTriggers, resolveChapterVideo } from '../flow-editor/flowPlayback'
+import { collectChapterPlaybackTriggers, mergePauseTriggers, mergeToasterTriggers, resolveVideoNodePlayback, type FlowQuestionTrigger } from '../flow-editor/flowPlayback'
 import { pickAiChatPrompts } from '../flow-editor/flowTypes'
 import { VideoToasterPopup } from '../components/VideoToasterPopup'
 import { parseUtcMs } from '../utils/eventCountdown'
@@ -53,6 +53,7 @@ export function DemoPage() {
   const [activeToaster, setActiveToaster] = useState<(VideoToaster & { triggerKey?: string }) | null>(null)
   const [shownTriggerKeys, setShownTriggerKeys] = useState<Set<string>>(new Set())
   const [activePausePoint, setActivePausePoint] = useState<(VideoPausePoint & { triggerKey?: string }) | null>(null)
+  const [activeQuestionTrigger, setActiveQuestionTrigger] = useState<FlowQuestionTrigger | null>(null)
   const [flowEventData, setFlowEventData] = useState<ScheduledEventPublic | null>(null)
   const [chatOpen, setChatOpen] = useState(false)
   const [chaptersOpen, setChaptersOpen] = useState(false)
@@ -192,15 +193,19 @@ export function DemoPage() {
     setShownTriggerKeys(new Set())
     setActiveToaster(null)
     setActivePausePoint(null)
+    setActiveQuestionTrigger(null)
     maxWatchedRef.current = 0
   }, [activeId, activeVideoId, videoKey])
 
   const playbackTriggers = useMemo(() => {
     const flow = data?.flow?.projectData
-    const { toasters: flowToasters, pauses: flowPauses } = collectChapterPlaybackTriggers(flow, activeId, activeVideoNodeId)
+    const { toasters: flowToasters, pauses: flowPauses, questions: flowQuestions, aichats: flowAichats } =
+      collectChapterPlaybackTriggers(flow, activeId, activeVideoNodeId)
     return {
       toasters: mergeToasterTriggers(data?.toasters ?? [], flowToasters),
       pauses: mergePauseTriggers(data?.pausePoints ?? [], flowPauses),
+      questions: flowQuestions,
+      aichats: flowAichats,
     }
   }, [data?.toasters, data?.pausePoints, data?.flow?.projectData, activeId, activeVideoNodeId])
 
@@ -219,7 +224,7 @@ export function DemoPage() {
   }, [playbackSeconds, playbackTriggers.toasters, activeId, shownTriggerKeys, logEvent])
 
   useEffect(() => {
-    if (!activeId || activePausePoint) return
+    if (!activeId || activePausePoint || activeQuestionTrigger) return
     const match = playbackTriggers.pauses.find(p =>
       !shownTriggerKeys.has(p.triggerKey) &&
       playbackSeconds >= p.triggerAtSeconds &&
@@ -233,21 +238,49 @@ export function DemoPage() {
   }, [playbackSeconds, playbackTriggers.pauses, activeId, shownTriggerKeys, activePausePoint, logEvent])
 
   useEffect(() => {
+    if (!activeId || activePausePoint || activeQuestionTrigger) return
+    const match = playbackTriggers.questions.find(q =>
+      !shownTriggerKeys.has(q.triggerKey) &&
+      playbackSeconds >= q.triggerAtSeconds &&
+      (q.chapterId == null || q.chapterId === activeId)
+    )
+    if (match) {
+      setActiveQuestionTrigger(match)
+      setShownTriggerKeys(prev => new Set([...prev, match.triggerKey]))
+      logEvent('flow_step', { chapterId: activeId, data: { triggerKey: match.triggerKey, nodeType: 'question' } })
+    }
+  }, [playbackSeconds, playbackTriggers.questions, activeId, shownTriggerKeys, activePausePoint, activeQuestionTrigger, logEvent])
+
+  useEffect(() => {
+    if (!activeId || flowNode || activePausePoint || activeQuestionTrigger) return
+    const match = playbackTriggers.aichats.find(a =>
+      !shownTriggerKeys.has(a.triggerKey) &&
+      playbackSeconds >= a.triggerAtSeconds &&
+      (a.chapterId == null || a.chapterId === activeId)
+    )
+    if (match) {
+      setShownTriggerKeys(prev => new Set([...prev, match.triggerKey]))
+      setFlowNode(match.node)
+      setPlaying(false)
+      logEvent('flow_step', { chapterId: activeId, data: { triggerKey: match.triggerKey, nodeType: 'aichat' } })
+    }
+  }, [playbackSeconds, playbackTriggers.aichats, activeId, shownTriggerKeys, flowNode, activePausePoint, activeQuestionTrigger, logEvent])
+
+  useEffect(() => {
     if (flowNode?.type !== 'event') {
       setFlowEventData(null)
       return
     }
-    const mode = (flowNode.parameters.mode as string) || 'inline'
     const slug = flowNode.parameters.eventSlug as string
-    if (mode === 'slug' && slug) {
-      api.getScheduledEvent(slug, sessionId).then(ev => {
-        eventOccurrenceRef.current = ev.nextStartsAtUtc ?? ev.startsAtUtc
-        setFlowEventData(ev)
-      }).catch(() => setFlowEventData(null))
+    if (slug) {
+      const viewerEmail = typeof localStorage !== 'undefined'
+        ? localStorage.getItem(`videotool_event_email_${slug}`) ?? undefined
+        : undefined
+      api.getScheduledEvent(slug, sessionId, viewerEmail).then(setFlowEventData).catch(() => setFlowEventData(null))
     } else {
       setFlowEventData(null)
     }
-  }, [flowNode?.id, flowNode?.type, flowNode?.parameters])
+  }, [flowNode?.id, flowNode?.type, flowNode?.parameters, sessionId])
   useEffect(() => {
     if (!activeToaster || activeToaster.durationSeconds <= 0) return
     const timer = setTimeout(() => {
@@ -269,10 +302,22 @@ export function DemoPage() {
       required: activePausePoint.required,
       placeholder: activePausePoint.placeholder,
     },
+  } : activeQuestionTrigger ? {
+    id: activeQuestionTrigger.flowNodeId,
+    type: 'question',
+    name: 'Video question',
+    parameters: {
+      prompt: activeQuestionTrigger.prompt,
+      fieldId: activeQuestionTrigger.fieldId,
+      inputType: activeQuestionTrigger.inputType,
+      options: activeQuestionTrigger.options,
+      required: activeQuestionTrigger.required,
+      placeholder: activeQuestionTrigger.placeholder,
+    },
   } : null
 
-  const videoHeld = !!activePausePoint
-    || (!!flowNode && flowNode.type !== 'aichat' && isFlowBlockingNode(flowNode))
+  const videoHeld = !!activePausePoint || !!activeQuestionTrigger
+    || (!!flowNode && flowNode.type !== 'aichat' && isFlowBlockingNode(flowNode, data?.flow?.projectData))
     || !!pendingChapter?.gate
 
   const handleTimeUpdate = useCallback((seconds: number) => {
@@ -289,7 +334,7 @@ export function DemoPage() {
     if (!data?.flow?.projectData) { setFlowNode(null); return }
     const merged = { ...flowAnswers, ...answers }
     setFlowAnswers(merged)
-    if (Object.keys(answers).length > 0 && ['intro', 'question', 'outro'].includes(currentNode.type)) {
+    if (Object.keys(answers).length > 0 && currentNode.type === 'question') {
       persistLead(`flow_${currentNode.type}`, answers, { nodeId: currentNode.id })
     }
     logEvent('flow_step', { data: { nodeId: currentNode.id, nodeType: currentNode.type } })
@@ -328,15 +373,8 @@ export function DemoPage() {
 
   const completeFlowEvent = useCallback(() => {
     if (!flowNode || flowNode.type !== 'event') return
-    const chId = flowEventData?.defaultChapterId
-      ?? (flowNode.parameters.defaultChapterId as number | undefined)
-    if (chId && data?.chapters.some(c => c.id === chId)) {
-      setActiveId(chId)
-      setPlaying(true)
-      setVideoKey(k => k + 1)
-    }
     advanceFlow(flowNode, flowAnswers)
-  }, [flowNode, flowEventData, flowAnswers, data?.chapters, advanceFlow])
+  }, [flowNode, flowAnswers, advanceFlow])
 
   useEffect(() => {
     if (!flowNode || flowNode.type !== 'aichat' || !data?.config) return
@@ -419,9 +457,10 @@ export function DemoPage() {
   const chapters = data?.chapters ?? []
   const config = data?.config
   const activeChapter = chapters.find(c => c.id === activeId) ?? null
-  const activeVideo = resolveChapterVideo(activeChapter, activeVideoId)
+  const activeVideoNode = data?.flow?.projectData?.nodes.find(n => n.id === activeVideoNodeId) ?? null
+  const activeVideo = resolveVideoNodePlayback(activeChapter, activeVideoId, activeVideoNode)
   const playerChapter = activeChapter && activeVideo
-    ? { id: activeChapter.id, name: activeVideo.name, videoType: activeVideo.videoType, videoValue: activeVideo.videoValue }
+    ? { id: activeChapter.id, name: activeVideo.name, videoType: activeVideo.videoType, videoValue: activeVideo.videoValue, isLive: activeVideo.isLive }
     : activeChapter
   const theme = config?.theme
   const chatTitle = theme?.chatTitle || 'Chat'
@@ -482,13 +521,19 @@ export function DemoPage() {
   }
 
   const submitPauseAnswer = (answers: Record<string, string>) => {
-    if (!activePausePoint) return
-    persistLead('pause_question', answers, { chapterId: activeId ?? undefined, nodeId: String(activePausePoint.id) })
-    logEvent('pause_question_answered', {
-      chapterId: activeId ?? undefined,
-      data: { pausePointId: activePausePoint.id, fieldId: activePausePoint.fieldId, answer: answers[activePausePoint.fieldId] },
-    })
-    setActivePausePoint(null)
+    if (activePausePoint) {
+      persistLead('pause_question', answers, { chapterId: activeId ?? undefined, nodeId: String(activePausePoint.id) })
+      logEvent('pause_question_answered', {
+        chapterId: activeId ?? undefined,
+        data: { pausePointId: activePausePoint.id, fieldId: activePausePoint.fieldId, answer: answers[activePausePoint.fieldId] },
+      })
+      setActivePausePoint(null)
+      return
+    }
+    if (activeQuestionTrigger) {
+      persistLead('flow_question', answers, { chapterId: activeId ?? undefined, nodeId: activeQuestionTrigger.flowNodeId })
+      setActiveQuestionTrigger(null)
+    }
   }
 
   const sendChat = async () => {
@@ -664,14 +709,14 @@ export function DemoPage() {
             )}
 
             {flowNode?.type === 'event' && (
-              <FlowEventOverlay
+              <FlowEventRegistrationOverlay
                 node={flowNode}
                 eventData={flowEventData}
                 onComplete={completeFlowEvent}
               />
             )}
 
-            {flowNode && shouldShowFlowOverlay(flowNode) && (
+            {flowNode && shouldShowFlowOverlay(flowNode, data?.flow?.projectData) && (
               <FlowOverlay
                 node={flowNode}
                 onSubmit={answers => advanceFlow(flowNode, answers)}

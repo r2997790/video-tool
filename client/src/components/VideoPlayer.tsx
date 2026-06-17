@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback } from 'react'
 import YouTube, { type YouTubeEvent, type YouTubePlayer } from 'react-youtube'
 
 interface VideoPlayerProps {
-  chapter: { id?: number; name: string; videoType: string; videoValue: string } | null
+  chapter: { id?: number; name: string; videoType: string; videoValue: string; isLive?: boolean } | null
   playing: boolean
   held?: boolean
   videoKey: number
@@ -59,6 +59,7 @@ export function VideoPlayer({ chapter, playing, held = false, videoKey, pauseEna
 
   const isYoutube = chapter.videoType === 'youtube' && chapter.videoValue
   const isDirect = chapter.videoType === 'direct' && chapter.videoValue
+  const isLive = !!chapter.isLive
 
   const ytOpts = {
     host: 'https://www.youtube-nocookie.com',
@@ -91,7 +92,7 @@ export function VideoPlayer({ chapter, playing, held = false, videoKey, pauseEna
       e.target.pauseVideo()
       return
     }
-    if (e.data === 0) onEnded?.()
+    if (e.data === 0 && !isLive) onEnded?.()
     if (!pauseEnabled && !held && e.data === 2) e.target.playVideo()
     reportTime()
   }
@@ -106,6 +107,7 @@ export function VideoPlayer({ chapter, playing, held = false, videoKey, pauseEna
   if (playing && isYoutube) {
     return (
       <div className="vd-yt-wrap">
+        {isLive && <span className="vd-live-badge">Live</span>}
         <YouTube
           key={videoKey}
           videoId={chapter.videoValue}
@@ -131,7 +133,7 @@ export function VideoPlayer({ chapter, playing, held = false, videoKey, pauseEna
         playsInline
         onTimeUpdate={reportTime}
         onPause={onVideoPause}
-        onEnded={() => onEnded?.()}
+        onEnded={() => { if (!isLive) onEnded?.() }}
       />
     )
   }

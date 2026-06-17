@@ -1,5 +1,5 @@
 import type { AdminChapter, AdminChapterVideo, FlowConnection, FlowNode, FlowProject } from '../types'
-import { getChapterIdFromNode, getNextNodes, getNextTraversalNode, getStartNodes, isPlaybackTriggerNode } from './flowRuntime'
+import { getChapterIdFromNode, getNextNodes, getNextTraversalNode, getStartNodes, isPlaybackTriggerNode, isVideoAttachType } from './flowRuntime'
 import { canConnect, newNode } from './flowSchema'
 
 export type TimelineVideoSegment = {
@@ -31,14 +31,14 @@ export type TimelineStepRow = {
 
 export type TimelineRow = TimelineStepRow | TimelineChapterRow
 
-/** Nested inside chapter blocks only (between videos). */
-export const CHAPTER_INTERSTITIAL_TYPES = new Set<FlowNode['type']>(['question', 'branch', 'event', 'aichat'])
+/** Top-level timeline rows (outside chapter blocks). */
+export const TOP_LEVEL_STEP_TYPES = new Set<FlowNode['type']>(['question', 'branch', 'event', 'aichat'])
 
-/** Top-level timeline rows (intro/outro stay outside chapter blocks). */
-export const TOP_LEVEL_STEP_TYPES = new Set<FlowNode['type']>(['intro', 'question', 'branch', 'outro', 'event', 'aichat'])
+/** Nested inside chapter blocks only (between videos). */
+export const CHAPTER_INTERSTITIAL_TYPES = new Set<FlowNode['type']>(['question', 'branch', 'event', 'aichat', 'pause', 'toaster'])
 
 /** Attached to a video node during playback. */
-export const VIDEO_NEST_TYPES = new Set<FlowNode['type']>(['pause', 'toaster'])
+export const VIDEO_NEST_TYPES = new Set<FlowNode['type']>(['question', 'pause', 'toaster', 'aichat'])
 
 /** Types that can be dropped into a chapter group on the visual canvas. */
 export const CHAPTER_NEST_TYPES = new Set<FlowNode['type']>([...CHAPTER_INTERSTITIAL_TYPES, 'video'])
@@ -60,7 +60,7 @@ function collectVideoEvents(flow: FlowProject, videoNodeId: string): FlowNode[] 
   const walk = (nodeId: string) => {
     for (const next of getNextNodes(flow, nodeId)) {
       if (seen.has(next.id)) continue
-      if (!isPlaybackTriggerNode(next)) break
+      if (!isPlaybackTriggerNode(next, flow)) break
       seen.add(next.id)
       events.push(next)
       walk(next.id)
@@ -88,11 +88,11 @@ function isTopLevelStep(node: FlowNode): boolean {
 }
 
 function getSpineSuccessors(flow: FlowProject, fromId: string): FlowNode[] {
-  return getNextNodes(flow, fromId).filter(n => !isPlaybackTriggerNode(n))
+  return getNextNodes(flow, fromId).filter(n => !isPlaybackTriggerNode(n, flow))
 }
 
 function stopsChapterBlock(node: FlowNode): boolean {
-  return isChapterHeader(node) || node.type === 'intro' || node.type === 'outro'
+  return isChapterHeader(node)
 }
 
 export function findChapterAncestor(project: FlowProject, nodeId: string): FlowNode | null {
@@ -180,7 +180,7 @@ function getAfterSegmentIndexForSelection(
     const idx = row.segments.findIndex(s => s.kind === 'step' && s.node.id === selectedNode.id)
     return idx >= 0 ? idx : undefined
   }
-  if (selectedNode.type === 'pause' || selectedNode.type === 'toaster') {
+  if (selectedNode.type === 'pause' || selectedNode.type === 'toaster' || selectedNode.type === 'question' || selectedNode.type === 'aichat') {
     for (const inc of project.connections.filter(c => c.to === selectedNode.id)) {
       const parent = project.nodes.find(n => n.id === inc.from)
       if (parent?.type === 'video') {
@@ -217,7 +217,7 @@ export type InsertTarget =
   | { scope: 'video'; videoNodeId: string }
   | { scope: 'reject'; message: string }
 
-const NEST_IN_CHAPTER_TYPES = new Set<FlowNode['type']>(['question', 'branch', 'aichat', 'event'])
+const NEST_IN_CHAPTER_TYPES = new Set<FlowNode['type']>(['question', 'branch', 'aichat', 'event', 'pause', 'toaster'])
 
 export function resolveInsertTarget(
   project: FlowProject,
@@ -225,14 +225,18 @@ export function resolveInsertTarget(
   type: FlowNode['type'],
   _chapterVideos: AdminChapterVideo[],
 ): InsertTarget {
-  if (type === 'pause' || type === 'toaster') {
+  if (isVideoAttachType(type)) {
     if (selectedNode?.type === 'video') {
       return { scope: 'video', videoNodeId: selectedNode.id }
     }
-    if (selectedNode && findChapterAncestor(project, selectedNode.id)) {
-      return { scope: 'reject', message: 'Select a video inside this chapter first' }
+    if (selectedNode) {
+      const chapter = findChapterAncestor(project, selectedNode.id)
+      if (chapter) {
+        const afterSegmentIndex = getAfterSegmentIndexForSelection(project, chapter, selectedNode, _chapterVideos)
+        return { scope: 'chapter', chapterNodeId: chapter.id, afterSegmentIndex }
+      }
     }
-    return { scope: 'reject', message: 'Select a video to attach pause/pop-up' }
+    return { scope: 'top' }
   }
 
   if (type === 'video') {
@@ -280,7 +284,7 @@ function positionNewNode(project: FlowProject, nodeId: string, parentId: string 
   if (!parent) return project
   const node = project.nodes.find(n => n.id === nodeId)
   if (!node) return project
-  const yOffset = parent.type === 'video' && (node.type === 'pause' || node.type === 'toaster') ? 60 : 0
+  const yOffset = parent.type === 'video' && isVideoAttachType(node.type) ? 60 : 0
   const px = (parent.x ?? 80) + 220
   const py = (parent.y ?? 80) + yOffset
   return {
@@ -782,10 +786,38 @@ export type TimelineEdit =
   | { type: 'reorderChapterSegment'; chapterNodeId: string; segmentNodeId: string; overSegmentNodeId: string }
   | { type: 'moveNodeToVideo'; nodeId: string; videoNodeId: string }
   | { type: 'moveIntoChapter'; nodeId: string; chapterNodeId: string; afterVideoNodeId?: string }
+  | { type: 'moveNodesIntoChapter'; nodeIds: string[]; chapterNodeId: string; afterSegmentIndex?: number }
   | { type: 'moveToTopLevel'; nodeId: string }
 
 export function canNestInChapter(node: FlowNode): boolean {
   return isChapterInterstitial(node) || node.type === 'video'
+}
+
+function timelineNodeOrder(project: FlowProject, chapters: AdminChapter[], videos: AdminChapterVideo[]): string[] {
+  const order: string[] = []
+  for (const row of projectToTimeline(project, chapters, videos)) {
+    if (row.kind === 'step') order.push(row.node.id)
+    else {
+      for (const seg of row.segments) {
+        order.push(seg.kind === 'video' ? seg.nodeId : seg.node.id)
+        if (seg.kind === 'video') {
+          for (const ev of seg.events) order.push(ev.id)
+        }
+      }
+    }
+  }
+  return order
+}
+
+export function sortNodesForChapterNest(
+  project: FlowProject,
+  nodeIds: string[],
+  chapters: AdminChapter[],
+  videos: AdminChapterVideo[],
+): string[] {
+  const order = timelineNodeOrder(project, chapters, videos)
+  const rank = new Map(order.map((id, i) => [id, i]))
+  return [...nodeIds].sort((a, b) => (rank.get(a) ?? 9999) - (rank.get(b) ?? 9999))
 }
 
 export function resolveTimelineDragId(id: string): string {
@@ -826,7 +858,7 @@ export function applyTimelineEdit(
     case 'moveNodeToVideo': {
       let next = removeNodeFromProject(project, edit.nodeId)
       const node = project.nodes.find(n => n.id === edit.nodeId)
-      if (!node || (node.type !== 'pause' && node.type !== 'toaster')) return next
+      if (!node || !isVideoAttachType(node.type)) return next
       next = { ...next, nodes: [...next.nodes, node] }
       next = insertNodeInTimeline(next, chapters, videos, node, { scope: 'video', videoNodeId: edit.videoNodeId })
       next = rebuildSpineConnections(next, chapters, videos)
@@ -868,6 +900,45 @@ export function applyTimelineEdit(
         chapterNodeId: edit.chapterNodeId,
         afterSegmentIndex,
       })
+      return rebuildSpineConnections(next, chapters, videos)
+    }
+    case 'moveNodesIntoChapter': {
+      const chapterNode = project.nodes.find(n => n.id === edit.chapterNodeId)
+      if (!chapterNode || chapterNode.type !== 'chapter') return project
+
+      const orderedIds = sortNodesForChapterNest(project, edit.nodeIds, chapters, videos)
+        .filter(id => {
+          const node = project.nodes.find(n => n.id === id)
+          return node && canNestInChapter(node) && node.type !== 'chapter'
+        })
+
+      let next = project
+      let afterSegmentIndex = edit.afterSegmentIndex
+      for (const nodeId of orderedIds) {
+        const node = next.nodes.find(n => n.id === nodeId)
+        if (!node) continue
+        const row = parseChapterBlockForLayout(next, chapterNode, videos)
+        let fromNode: FlowNode | undefined = chapterNode
+        if (afterSegmentIndex != null && afterSegmentIndex >= 0) {
+          const seg = row.segments[afterSegmentIndex]
+          if (seg?.kind === 'video') fromNode = next.nodes.find(n => n.id === seg.nodeId)
+          else if (seg?.kind === 'step') fromNode = seg.node
+        } else if (row.segments.length > 0) {
+          const last = row.segments[row.segments.length - 1]
+          const fromId = last.kind === 'video' ? last.nodeId : last.node.id
+          fromNode = next.nodes.find(n => n.id === fromId)
+        }
+        if (fromNode && !canConnect(fromNode, node)) continue
+
+        next = removeNodeFromProject(next, nodeId)
+        next = { ...next, nodes: [...next.nodes, node] }
+        next = insertNodeInTimeline(next, chapters, videos, node, {
+          scope: 'chapter',
+          chapterNodeId: edit.chapterNodeId,
+          afterSegmentIndex,
+        })
+        afterSegmentIndex = undefined
+      }
       return rebuildSpineConnections(next, chapters, videos)
     }
     case 'moveToTopLevel': {
@@ -977,7 +1048,8 @@ export function insertNodeInTimeline(
 ): FlowProject {
   const next = { ...project, nodes: [...project.nodes], connections: [...project.connections] }
 
-  if (target.scope === 'video' && (node.type === 'pause' || node.type === 'toaster')) {
+  if (target.scope === 'video' && isVideoAttachType(node.type)) {
+    node.parameters = { ...node.parameters, placement: 'during' }
     const events = collectVideoEvents(next, target.videoNodeId)
     const lastEvent = events[events.length - 1]
     const fromId = lastEvent?.id ?? target.videoNodeId
@@ -1004,6 +1076,9 @@ export function insertNodeInTimeline(
   }
 
   if (target.scope === 'chapter' && (isChapterInterstitial(node) || node.type === 'video')) {
+    if (isVideoAttachType(node.type)) {
+      node.parameters = { ...node.parameters, placement: 'between' }
+    }
     next.nodes.push(node)
     const chapterNode = next.nodes.find(n => n.id === target.chapterNodeId)
     if (!chapterNode) return next
@@ -1065,8 +1140,6 @@ export function videoLabel(videoId: number, videos: AdminChapterVideo[]): string
 
 export function nodeSummary(node: FlowNode): string {
   switch (node.type) {
-    case 'intro': return getNodeHeading(node)
-    case 'outro': return getNodeHeading(node)
     case 'question': return (node.parameters.prompt as string) || node.name
     case 'branch': return `Branch on ${node.parameters.sourceField || 'field'}`
     case 'chapter': return 'Chapter block'
@@ -1074,13 +1147,9 @@ export function nodeSummary(node: FlowNode): string {
     case 'toaster': return (node.parameters.title as string) || 'Pop-up'
     case 'pause': return (node.parameters.prompt as string) || 'Pause question'
     case 'aichat': return (node.parameters.heading as string) || 'AI chat'
-    case 'event': return (node.parameters.holdingHeading as string) || 'Event'
+    case 'event': return (node.parameters.heading as string) || 'Event registration'
     default: return node.name
   }
-}
-
-function getNodeHeading(node: FlowNode): string {
-  return (node.parameters.heading as string) || node.name
 }
 
 export function ensureLegacyChapterVideos(
@@ -1105,7 +1174,7 @@ export function ensureLegacyChapterVideos(
     connections.push({ from: n.id, to: vid.id })
     for (const c of project.connections.filter(c => c.from === n.id && project.nodes.find(x => x.id === c.to)?.type !== 'toaster' && project.nodes.find(x => x.id === c.to)?.type !== 'pause')) {
       const target = project.nodes.find(x => x.id === c.to)
-      if (target && !isPlaybackTriggerNode(target)) {
+      if (target && !isPlaybackTriggerNode(target, project)) {
         connections.push({ from: vid.id, to: c.to })
         const idx = connections.findIndex(x => x.from === n.id && x.to === c.to)
         if (idx >= 0) connections.splice(idx, 1)

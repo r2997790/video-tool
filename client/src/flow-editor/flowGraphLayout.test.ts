@@ -17,7 +17,7 @@ const ctx = {
 }
 
 function buildChapterFlow(): FlowProject {
-  const intro = newNode('intro', 'Intro')
+  const start = newNode('question', 'Start')
   const chapter = newNode('chapter', 'Chapter block')
   chapter.parameters = { chapterId: 1 }
   chapter.x = 400
@@ -29,9 +29,9 @@ function buildChapterFlow(): FlowProject {
 
   return {
     projectName: 'Test',
-    nodes: [intro, chapter, video, q1, q2],
+    nodes: [start, chapter, video, q1, q2],
     connections: [
-      { from: intro.id, to: chapter.id },
+      { from: start.id, to: chapter.id },
       { from: chapter.id, to: video.id },
       { from: video.id, to: q1.id },
       { from: q1.id, to: q2.id },
@@ -43,11 +43,11 @@ describe('flowGraphLayout', () => {
   it('isFreePositionNode returns true for chapters and top-level nodes only', () => {
     const project = buildChapterFlow()
     const chapter = project.nodes.find(n => n.type === 'chapter')!
-    const intro = project.nodes.find(n => n.type === 'intro')!
-    const q = project.nodes.find(n => n.name === 'Question A')!
+    const start = project.nodes.find(n => n.name === 'Start')!
 
     expect(isFreePositionNode(project, chapter.id)).toBe(true)
-    expect(isFreePositionNode(project, intro.id)).toBe(true)
+    expect(isFreePositionNode(project, start.id)).toBe(true)
+    const q = project.nodes.find(n => n.name === 'Question A')!
     expect(isFreePositionNode(project, q.id)).toBe(false)
   })
 

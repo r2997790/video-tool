@@ -30,6 +30,7 @@ import {
   segmentSortableId,
   TOP_LEVEL_STEP_TYPES,
   CHAPTER_INTERSTITIAL_TYPES,
+  VIDEO_NEST_TYPES,
   type TimelineRow,
   videoLabel,
 } from './flowTimeline'
@@ -109,7 +110,11 @@ function SortableEventRow({
   onDelete: () => void
 }) {
   const triggerAt = (node.parameters.triggerAtSeconds as number) || 0
-  const kind = node.type === 'pause' ? 'Pause' : 'Pop-up'
+  const kind = node.type === 'pause' ? 'Pause'
+    : node.type === 'toaster' ? 'Pop-up'
+    : node.type === 'question' ? 'Question'
+    : node.type === 'aichat' ? 'AI Chat'
+    : 'Event'
 
   return (
     <SortableRowShell id={node.id} className={`timeline-event-row${selected ? ' is-selected' : ''}`}>
@@ -447,7 +452,7 @@ export function TimelineEditor({ state }: TimelineEditorProps) {
       </DndContext>
       {timeline.length === 0 && (
         <div className="timeline-empty">
-          <p>Your flow is empty. Use the toolbar above to add an Intro, Chapter, or Question.</p>
+          <p>Your flow is empty. Use the toolbar above to add a Chapter, Question, or Event registration step.</p>
         </div>
       )}
     </div>
@@ -463,7 +468,7 @@ export function addNodeWithContext(
 }
 
 export function canDropNodeType(nodeType: FlowNode['type'], zone: 'video' | 'between' | 'top'): boolean {
-  if (zone === 'video') return nodeType === 'pause' || nodeType === 'toaster'
+  if (zone === 'video') return VIDEO_NEST_TYPES.has(nodeType)
   if (zone === 'between') return BETWEEN_VIDEO_TYPES.has(nodeType)
   return TOP_LEVEL_TYPES.has(nodeType)
 }

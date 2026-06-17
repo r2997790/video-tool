@@ -1,6 +1,6 @@
 import type { FlowProject } from '../types'
 import type { AdminChapterVideo } from '../types'
-import { getChapterIdFromNode, getNextNodes } from './flowRuntime'
+import { getChapterIdFromNode, getNextNodes, getStartNodes, isVideoEventChainNode } from './flowRuntime'
 import { getVideoIdFromNode } from './flowTimeline'
 
 function buildAdjacency(project: FlowProject): Map<string, string[]> {
@@ -55,35 +55,42 @@ export function validateFlowProject(
   }
 
   for (const node of videoNodes) {
-    const vid = getVideoIdFromNode(node)
-    if (!vid) {
-      warnings.push(`Video node "${node.name}" is missing a video clip selection.`)
+    const source = (node.parameters.videoSource as string) || 'library'
+    if (source === 'library') {
+      const vid = getVideoIdFromNode(node)
+      if (!vid) {
+        warnings.push(`Video node "${node.name}" is missing a video clip selection.`)
+      }
+    } else if (!(node.parameters.videoLink as string)?.trim()) {
+      warnings.push(`Video node "${node.name}" is missing an inline video URL.`)
     }
   }
 
   for (const node of project.nodes.filter(n => n.type === 'pause' || n.type === 'toaster')) {
-    const hasVideoParent = project.connections.some(c => {
-      if (c.to !== node.id) return false
-      let currentId: string | null = c.from
-      const seen = new Set<string>()
-      while (currentId && !seen.has(currentId)) {
-        seen.add(currentId)
-        const parent = project.nodes.find(n => n.id === currentId)
-        if (parent?.type === 'video') return true
-        if (!parent || (parent.type !== 'pause' && parent.type !== 'toaster')) return false
-        const incoming = project.connections.find(x => x.to === currentId)
-        currentId = incoming?.from ?? null
-      }
-      return false
-    })
-    if (!hasVideoParent) {
-      warnings.push(`${node.type === 'pause' ? 'Pause' : 'Pop-up'} "${node.name}" is not nested under a video.`)
+    if (isVideoEventChainNode(project, node.id)) continue
+    const hasSpineParent = project.connections.some(c => c.to === node.id)
+    if (!hasSpineParent) {
+      warnings.push(`${node.type === 'pause' ? 'Pause' : 'Pop-up'} "${node.name}" is not connected in the flow.`)
     }
   }
 
-  const intro = project.nodes.find(n => n.type === 'intro')
-  if (intro && (chapterNodes.length > 0 || videoNodes.length > 0) && !canReachPlayback(intro.id, project)) {
-    warnings.push('No path from the intro node to video content — viewers may never reach playback.')
+  for (const node of project.nodes.filter(n => n.type === 'question' || n.type === 'aichat')) {
+    if (isVideoEventChainNode(project, node.id) && (node.parameters.triggerAtSeconds as number | undefined) == null) {
+      warnings.push(`"${node.name}" is attached to a video but has no trigger time.`)
+    }
+  }
+
+  for (const node of project.nodes.filter(n => n.type === 'event')) {
+    if (!(node.parameters.eventSlug as string)?.trim()) {
+      warnings.push(`Event registration node "${node.name}" has no scheduled event selected.`)
+    }
+  }
+
+  const starts = getStartNodes(project)
+  for (const start of starts) {
+    if ((chapterNodes.length > 0 || videoNodes.length > 0) && !canReachPlayback(start.id, project)) {
+      warnings.push(`No path from "${start.name}" to video content — viewers may never reach playback.`)
+    }
   }
 
   if (options?.isEnabled && (options.chapterCount ?? 0) === 0) {

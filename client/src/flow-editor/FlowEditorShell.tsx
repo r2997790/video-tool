@@ -84,6 +84,22 @@ export function FlowEditorShell({ flowSlug }: FlowEditorShellProps) {
     selectEdge(null)
   }, [selectedEdge, applyEdit, selectEdge])
 
+  const handleNestInChapter = useCallback((chapterNodeId: string) => {
+    const ids = selectedNodeIds.length
+      ? selectedNodeIds
+      : selectedNodeId
+        ? [selectedNodeId]
+        : []
+    const nodeIds = ids.filter(id => {
+      const node = project.nodes.find(n => n.id === id)
+      return node && node.type !== 'chapter'
+    })
+    if (!nodeIds.length) return
+    applyEdit({ type: 'moveNodesIntoChapter', nodeIds, chapterNodeId })
+    selectNode(null)
+    setSelectedNodeIds([])
+  }, [selectedNodeIds, selectedNodeId, project.nodes, applyEdit, selectNode, setSelectedNodeIds])
+
   const updateSelected = (updates: Partial<FlowNode>) => {
     if (!selectedNode) return
     const updated = {
@@ -112,7 +128,7 @@ export function FlowEditorShell({ flowSlug }: FlowEditorShellProps) {
 
   const fieldIds = collectFlowFieldIds(project)
   const questionTargets = project.nodes
-    .filter(n => ['question', 'intro', 'outro'].includes(n.type))
+    .filter(n => n.type === 'question')
     .map(n => ({ id: n.id, label: n.name }))
   const chapterTargets = project.nodes
     .filter(n => n.type === 'chapter')
@@ -136,6 +152,7 @@ export function FlowEditorShell({ flowSlug }: FlowEditorShellProps) {
         state={state}
         onDeleteSelection={handleDeleteSelection}
         onBreakLink={handleBreakLink}
+        onNestInChapter={handleNestInChapter}
       />
       <div className="flow-editor-body">
         <div className="flow-editor-main">

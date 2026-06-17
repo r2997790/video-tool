@@ -1,6 +1,6 @@
 import type { Node } from '@xyflow/react'
 import type { AdminChapter, AdminChapterVideo, FlowNode, FlowProject } from '../types'
-import { isPlaybackTriggerNode } from './flowRuntime'
+import { isPlaybackTriggerNode, isVideoAttachType } from './flowRuntime'
 import {
   CHAPTER_NEST_TYPES,
   findChapterAncestor,
@@ -20,7 +20,7 @@ export const NESTED_NODE_HEIGHT = 72
 
 function findVideoParent(project: FlowProject, nodeId: string): FlowNode | null {
   const node = project.nodes.find(n => n.id === nodeId)
-  if (!node || !isPlaybackTriggerNode(node)) return null
+  if (!node || !isPlaybackTriggerNode(node, project)) return null
 
   const seen = new Set<string>()
   const queue = [nodeId]
@@ -32,7 +32,7 @@ function findVideoParent(project: FlowProject, nodeId: string): FlowNode | null 
       const parent = project.nodes.find(n => n.id === inc.from)
       if (!parent) continue
       if (parent.type === 'video') return parent
-      if (isPlaybackTriggerNode(parent)) queue.push(parent.id)
+      if (isPlaybackTriggerNode(parent, project)) queue.push(parent.id)
     }
   }
   return null
@@ -354,7 +354,7 @@ export function dropTargetToEdit(
   }
 
   if (target.scope === 'video') {
-    if (dragged.type !== 'pause' && dragged.type !== 'toaster') return null
+    if (!isVideoAttachType(dragged.type)) return null
     return { type: 'moveNodeToVideo', nodeId: draggedNodeId, videoNodeId: target.videoNodeId }
   }
 

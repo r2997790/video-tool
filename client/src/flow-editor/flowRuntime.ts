@@ -1,21 +1,60 @@
 import type { FlowNode, FlowProject } from '../types'
-import type { BranchAction, BranchResult, FlowBranchRule, FlowFormField, FlowQuestionField, QuestionInputType } from './flowTypes'
+import type { BranchAction, BranchResult, FlowBranchRule, FlowFormField, QuestionInputType } from './flowTypes'
+import { VIDEO_ATTACH_TYPES } from './flowSchema'
 
 export function getStartNodes(flow: FlowProject): FlowNode[] {
   const targets = new Set(flow.connections.map(c => c.to))
-  return flow.nodes.filter(n => !targets.has(n.id) && (n.type === 'intro' || n.type === 'question' || n.type === 'aichat' || n.type === 'event'))
+  return flow.nodes.filter(n => !targets.has(n.id) && (n.type === 'question' || n.type === 'aichat' || n.type === 'event'))
 }
 
-export function isPlaybackTriggerNode(node: FlowNode): boolean {
-  return node.type === 'toaster' || node.type === 'pause'
+export function isVideoAttachType(type: FlowNode['type']): boolean {
+  return (VIDEO_ATTACH_TYPES as readonly string[]).includes(type)
+}
+
+export function isPlaybackTriggerNode(node: FlowNode, flow?: FlowProject): boolean {
+  if (!isVideoAttachType(node.type)) return false
+  if (!flow) return node.type === 'pause' || node.type === 'toaster'
+  return isVideoEventChainNode(flow, node.id)
+}
+
+function isDuringVideoPlacement(node: FlowNode): boolean {
+  if (node.parameters.placement === 'between') return false
+  if (node.parameters.placement === 'during') return true
+  return node.type === 'pause' || node.type === 'toaster'
+}
+
+export function isVideoEventChainNode(flow: FlowProject, nodeId: string): boolean {
+  const node = flow.nodes.find(n => n.id === nodeId)
+  if (!node) return false
+
+  if (!isDuringVideoPlacement(node)) {
+    const incoming = flow.connections.filter(c => c.to === nodeId)
+    return incoming.some(inc => {
+      const parent = flow.nodes.find(n => n.id === inc.from)
+      return parent != null && isDuringVideoPlacement(parent) && isVideoEventChainNode(flow, parent.id) && isVideoAttachType(node.type)
+    })
+  }
+
+  const seen = new Set<string>()
+  let currentId: string | null = nodeId
+  while (currentId && !seen.has(currentId)) {
+    seen.add(currentId)
+    const current = flow.nodes.find(n => n.id === currentId)
+    if (!current) return false
+    if (current.type === 'video') return true
+    if (!isVideoAttachType(current.type)) return false
+    const incoming = flow.connections.find(c => c.to === currentId)
+    currentId = incoming?.from ?? null
+  }
+  return false
 }
 
 export function getNextTraversalNode(flow: FlowProject, fromId: string): FlowNode | null {
   const direct = getNextNodes(flow, fromId)
-  const primary = direct.find(n => !isPlaybackTriggerNode(n))
+  const primary = direct.find(n => !isPlaybackTriggerNode(n, flow))
   if (primary) return primary
   for (const n of direct) {
-    if (isPlaybackTriggerNode(n)) {
+    if (isPlaybackTriggerNode(n, flow)) {
       const deeper = getNextTraversalNode(flow, n.id)
       if (deeper) return deeper
     }
@@ -24,11 +63,13 @@ export function getNextTraversalNode(flow: FlowProject, fromId: string): FlowNod
 }
 
 export function isInteractiveFlowNode(node: FlowNode): boolean {
-  return node.type === 'intro' || node.type === 'outro' || node.type === 'question' || node.type === 'aichat'
+  return node.type === 'question' || node.type === 'aichat'
 }
 
-export function isFlowBlockingNode(node: FlowNode): boolean {
-  return isInteractiveFlowNode(node) || node.type === 'event'
+export function isFlowBlockingNode(node: FlowNode, flow?: FlowProject): boolean {
+  if (isInteractiveFlowNode(node) || node.type === 'event') return true
+  if (node.type === 'pause' && (!flow || !isVideoEventChainNode(flow, node.id))) return true
+  return false
 }
 
 export function getNextNodes(flow: FlowProject, nodeId: string): FlowNode[] {
@@ -94,7 +135,7 @@ export function getChapterIdFromNode(node: FlowNode): number | null {
 }
 
 export function nodeHasForm(node: FlowNode): boolean {
-  return node.type === 'intro' || node.type === 'outro' || node.type === 'question'
+  return node.type === 'question'
 }
 
 export function getNodeQuestions(node: FlowNode): FlowFormField[] {
@@ -112,19 +153,24 @@ export function getNodeQuestions(node: FlowNode): FlowFormField[] {
     }]
   }
 
-  const questions = (node.parameters.questions as FlowQuestionField[]) || []
-  return questions.map(q => ({
-    id: q.id,
-    label: q.label,
-    inputType: normalizeInputType(q.inputType || q.type, q.options),
-    placeholder: q.placeholder,
-    required: q.required,
-    options: q.options,
-  }))
+  if (node.type === 'pause') {
+    const options = (node.parameters.options as string[]) || []
+    return [{
+      id: (node.parameters.fieldId as string) || 'answer',
+      label: (node.parameters.prompt as string) || 'Your answer',
+      inputType: normalizeInputType(node.parameters.inputType as string, options),
+      options: options.length ? options : undefined,
+      placeholder: node.parameters.placeholder as string | undefined,
+      required: node.parameters.required !== false,
+    }]
+  }
+
+  return []
 }
 
 export function getNodeHeading(node: FlowNode): string {
   if (node.type === 'question') return (node.parameters.prompt as string) || node.name || 'Please answer'
+  if (node.type === 'event') return (node.parameters.heading as string) || node.name || 'Event registration'
   return (node.parameters.heading as string) || node.name || 'Please answer'
 }
 
@@ -136,9 +182,7 @@ export function collectFlowFieldIds(flow: FlowProject): string[] {
   const ids: string[] = []
   for (const n of flow.nodes) {
     if (n.type === 'question') ids.push((n.parameters.fieldId as string) || 'answer')
-    if (n.type === 'intro' || n.type === 'outro') {
-      for (const q of (n.parameters.questions as FlowQuestionField[]) || []) ids.push(q.id)
-    }
+    if (n.type === 'pause') ids.push((n.parameters.fieldId as string) || 'answer')
   }
   return [...new Set(ids)]
 }
@@ -263,13 +307,15 @@ function continueAfterChapter(
     handlers.setFlowNode(null)
     return null
   }
-  const next = after && isFlowBlockingNode(after) ? after : null
+  const next = after && isFlowBlockingNode(after, flow) ? after : null
   handlers.setFlowNode(next)
   return next
 }
 
-export function shouldShowFlowOverlay(node: FlowNode): boolean {
-  return node.type === 'intro' || node.type === 'outro' || node.type === 'question'
+export function shouldShowFlowOverlay(node: FlowNode, flow?: FlowProject): boolean {
+  if (node.type === 'question') return true
+  if (node.type === 'pause' && flow && !isVideoEventChainNode(flow, node.id)) return true
+  return false
 }
 
 export function onVideoEnded(
@@ -287,7 +333,7 @@ export function onVideoEnded(
   if (nextNode.type === 'video') {
     activateVideoNode(nextNode, handlers)
     const after = getNextTraversalNode(flow, nextNode.id)
-    const blocking = after && isFlowBlockingNode(after) ? after : null
+    const blocking = after && isFlowBlockingNode(after, flow) ? after : null
     handlers.setFlowNode(blocking)
     return blocking
   }
@@ -306,7 +352,7 @@ export function onVideoEnded(
     return null
   }
 
-  if (isFlowBlockingNode(nextNode)) {
+  if (isFlowBlockingNode(nextNode, flow)) {
     handlers.setFlowNode(nextNode)
     handlers.setPlaying(false)
     return nextNode
@@ -354,7 +400,7 @@ export function advanceFromNode(
     return continueAfterChapter(flow, nextNode, answers, handlers)
   }
 
-  if (isFlowBlockingNode(nextNode)) {
+  if (isFlowBlockingNode(nextNode, flow)) {
     handlers.setFlowNode(nextNode)
     return nextNode
   }
@@ -377,12 +423,12 @@ export function initializeFlow(
   while (current && guard++ < 50) {
     if (current.type === 'aichat' || current.type === 'event') {
       handlers.setFlowNode(current)
-      if (isFlowBlockingNode(current)) handlers.setPlaying(false)
+      if (isFlowBlockingNode(current, flow)) handlers.setPlaying(false)
       return current
     }
-    if (shouldShowFlowOverlay(current) && !shouldAutoAdvanceNode(current)) {
+    if (shouldShowFlowOverlay(current, flow) && !shouldAutoAdvanceNode(current)) {
       handlers.setFlowNode(current)
-      if (isFlowBlockingNode(current)) handlers.setPlaying(false)
+      if (isFlowBlockingNode(current, flow)) handlers.setPlaying(false)
       return current
     }
     current = advanceFromNode(current, answers, flow, handlers)

@@ -4,8 +4,8 @@ import { newNode, emptyProject } from './flowSchema'
 
 describe('flowDocument', () => {
   it('round-trips serialize and parse', () => {
-    const intro = newNode('intro')
-    const project = { ...emptyProject(), nodes: [intro], connections: [] }
+    const start = newNode('question', 'Welcome')
+    const project = { ...emptyProject(), nodes: [start], connections: [] }
     const json = serializeFlowDocument('My Flow', project, { description: 'test' })
     const { document, warnings } = parseFlowDocument(json)
     expect(document.schemaVersion).toBe(1)
@@ -30,9 +30,9 @@ describe('flowDocument', () => {
   })
 
   it('merges projects without id collisions', () => {
-    const a = newNode('intro', 'A')
+    const a = newNode('question', 'A')
     const base = { projectName: 'Base', nodes: [a], connections: [] }
-    const b = newNode('outro', 'B')
+    const b = newNode('question', 'B')
     const incoming = { projectName: 'Incoming', nodes: [b], connections: [] }
     const merged = mergeFlowProjects(base, incoming)
     expect(merged.nodes).toHaveLength(2)

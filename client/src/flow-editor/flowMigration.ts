@@ -1,6 +1,7 @@
 import type { FlowNode, FlowProject } from '../types'
+import type { FlowQuestionField } from './flowTypes'
 import { newNode } from './flowSchema'
-import { getChapterIdFromNode, getNextNodes } from './flowRuntime'
+import { getChapterIdFromNode, getNextNodes, isVideoAttachType } from './flowRuntime'
 import { ensureLegacyChapterVideos } from './flowTimeline'
 import type { AdminChapterVideo } from '../types'
 
@@ -53,7 +54,7 @@ function attachToVideo(
   videoNodeId: string,
   eventNode: FlowNode,
 ): void {
-  const events = getNextNodes(project, videoNodeId).filter(n => n.type === 'pause' || n.type === 'toaster')
+  const events = getNextNodes(project, videoNodeId).filter(n => isVideoAttachType(n.type))
   const last = events[events.length - 1]
   const from = last?.id ?? videoNodeId
   if (!project.connections.some(c => c.from === from && c.to === eventNode.id)) {
@@ -130,4 +131,107 @@ export function migrateLegacyPlaybackToFlow(
   }
 
   return next
+}
+
+function migrateIntroOutroNode(_project: FlowProject, legacy: FlowNode & { type: string }): FlowNode[] {
+  const questions = (legacy.parameters.questions as FlowQuestionField[]) || []
+  const heading = (legacy.parameters.heading as string) || legacy.name
+  const subtext = (legacy.parameters.subtext as string) || ''
+
+  if (questions.length === 0) {
+    const node = newNode('question', heading)
+    node.parameters = {
+      prompt: heading,
+      fieldId: `legacy_${legacy.id}`,
+      inputType: 'text',
+      required: false,
+      subtext,
+    }
+    return [node]
+  }
+
+  return questions.map((q, i) => {
+    const node = newNode('question', q.label || `Question ${i + 1}`)
+    node.parameters = {
+      prompt: q.label,
+      fieldId: q.id,
+      inputType: q.inputType || q.type || 'text',
+      options: q.options || [],
+      required: q.required !== false,
+      placeholder: q.placeholder || '',
+      subtext: i === 0 ? subtext : '',
+    }
+    if (i === 0 && heading && heading !== q.label) {
+      node.parameters.heading = heading
+    }
+    return node
+  })
+}
+
+function rewireLegacyGate(
+  project: FlowProject,
+  legacyId: string,
+  replacementIds: string[],
+): void {
+  if (replacementIds.length === 0) return
+  const incoming = project.connections.filter(c => c.to === legacyId)
+  const outgoing = project.connections.filter(c => c.from === legacyId)
+  project.connections = project.connections.filter(c => c.from !== legacyId && c.to !== legacyId)
+
+  for (const inc of incoming) {
+    project.connections.push({ from: inc.from, to: replacementIds[0] })
+  }
+  for (let i = 0; i < replacementIds.length - 1; i++) {
+    project.connections.push({ from: replacementIds[i], to: replacementIds[i + 1] })
+  }
+  const lastId = replacementIds[replacementIds.length - 1]
+  for (const out of outgoing) {
+    project.connections.push({ from: lastId, to: out.to })
+  }
+}
+
+export function migrateIntroOutroNodes(project: FlowProject): FlowProject {
+  const legacyNodes = project.nodes.filter(n => {
+    const t = n.type as string
+    return t === 'intro' || t === 'outro'
+  }) as Array<FlowNode & { type: string }>
+  if (legacyNodes.length === 0) return project
+
+  const next: FlowProject = {
+    ...project,
+    nodes: project.nodes.filter(n => {
+      const t = n.type as string
+      return t !== 'intro' && t !== 'outro'
+    }),
+    connections: [...project.connections],
+  }
+
+  for (const legacy of legacyNodes) {
+    const replacements = migrateIntroOutroNode(next, legacy)
+    next.nodes.push(...replacements)
+    rewireLegacyGate(next, legacy.id, replacements.map(n => n.id))
+  }
+
+  return next
+}
+
+export function migrateLegacyEventNodes(project: FlowProject): FlowProject {
+  let changed = false
+  const nodes = project.nodes.map(n => {
+    if (n.type !== 'event') return n
+    const mode = n.parameters.mode as string | undefined
+    if (mode !== 'inline') return n
+    changed = true
+    const { mode: _m, title, holdingHeading, holdingMessage, startsAtUtc, holdingImageUrl, holdingVideoUrl, holdingVideoType, defaultChapterId, ...rest } = n.parameters
+    return {
+      ...n,
+      parameters: {
+        ...rest,
+        eventSlug: '',
+        heading: (holdingHeading as string) || (title as string) || '',
+        subtext: (holdingMessage as string) || '',
+      },
+    }
+  })
+  return changed ? { ...project, nodes } : project
 }

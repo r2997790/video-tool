@@ -150,7 +150,7 @@ export interface ChatMsg {
 
 export interface FlowNode {
   id: string
-  type: 'intro' | 'question' | 'branch' | 'chapter' | 'video' | 'outro' | 'aichat' | 'toaster' | 'pause' | 'event'
+  type: 'question' | 'branch' | 'chapter' | 'video' | 'aichat' | 'toaster' | 'pause' | 'event'
   name: string
   parameters: Record<string, unknown>
   x?: number
