@@ -4,9 +4,18 @@ import { ChapterNodeEditor } from './ChapterNodeEditor'
 import { AdminFieldLabel } from '../components/AdminFieldLabel'
 import { FieldHelp } from '../components/FieldHelp'
 import { HELP } from '../adminHelpText'
+import { isVideoAttachType } from './flowRuntime'
+
+function attachPlacementValue(selected: FlowNode): 'during' | 'between' {
+  if (selected.parameters.placement === 'during') return 'during'
+  if (selected.parameters.placement === 'between') return 'between'
+  return selected.type === 'pause' || selected.type === 'toaster' ? 'during' : 'between'
+}
+
 interface Props {
   flowSlug: string
   selected: FlowNode
+  inChapter?: boolean
   chapters: AdminChapter[]
   chapterVideos: AdminChapterVideo[]
   onChaptersReload: () => void
@@ -21,6 +30,7 @@ interface Props {
 export function FlowNodePropertyPanel({
   flowSlug,
   selected,
+  inChapter = false,
   chapters,
   chapterVideos,
   onChaptersReload,
@@ -36,6 +46,22 @@ export function FlowNodePropertyPanel({
       <AdminFieldLabel label="Name" help={HELP.flowEditor.nodeName}>
         <input className="admin-input" value={selected.name} onChange={e => onUpdate({ name: e.target.value })} />
       </AdminFieldLabel>
+
+      {inChapter && isVideoAttachType(selected.type) && (
+        <AdminFieldLabel
+          label="Placement"
+          help="During video: timed events while playback is in progress. Between videos: a step on the chapter spine before or after videos."
+        >
+          <select
+            className="admin-input"
+            value={attachPlacementValue(selected)}
+            onChange={e => onUpdate({ parameters: { placement: e.target.value } })}
+          >
+            <option value="during">During video</option>
+            <option value="between">Between videos</option>
+          </select>
+        </AdminFieldLabel>
+      )}
 
       {selected.type === 'event' && (
         <>

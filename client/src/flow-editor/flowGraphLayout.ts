@@ -1,6 +1,6 @@
 import type { Node } from '@xyflow/react'
 import type { AdminChapter, AdminChapterVideo, FlowNode, FlowProject } from '../types'
-import { isPlaybackTriggerNode, isVideoAttachType } from './flowRuntime'
+import { findVideoAncestor, isPlaybackTriggerNode, isVideoAttachType } from './flowRuntime'
 import {
   CHAPTER_NEST_TYPES,
   findChapterAncestor,
@@ -21,21 +21,7 @@ export const NESTED_NODE_HEIGHT = 72
 function findVideoParent(project: FlowProject, nodeId: string): FlowNode | null {
   const node = project.nodes.find(n => n.id === nodeId)
   if (!node || !isPlaybackTriggerNode(node, project)) return null
-
-  const seen = new Set<string>()
-  const queue = [nodeId]
-  while (queue.length > 0) {
-    const id = queue.shift()!
-    if (seen.has(id)) continue
-    seen.add(id)
-    for (const inc of project.connections.filter(c => c.to === id)) {
-      const parent = project.nodes.find(n => n.id === inc.from)
-      if (!parent) continue
-      if (parent.type === 'video') return parent
-      if (isPlaybackTriggerNode(parent, project)) queue.push(parent.id)
-    }
-  }
-  return null
+  return findVideoAncestor(project, nodeId)
 }
 
 function segmentNodeId(seg: ChapterSegment): string {
@@ -63,6 +49,31 @@ export function isFreePositionNode(project: FlowProject, nodeId: string): boolea
   return true
 }
 
+function videoSegmentHeight(seg: ChapterSegment): number {
+  if (seg.kind !== 'video') return NESTED_NODE_HEIGHT + 12
+  const nestHeight = NESTED_NODE_HEIGHT + 8 + (seg.events.length > 0 ? 56 : 40)
+  return nestHeight + 8
+}
+
+function resolveVideoNestHit(
+  localY: number,
+  segments: ChapterSegment[],
+): string | null {
+  let childY = CHAPTER_GROUP_PADDING + 40
+  for (const seg of segments) {
+    if (seg.kind === 'video') {
+      const nestHeight = NESTED_NODE_HEIGHT + 8 + (seg.events.length > 0 ? 56 : 40)
+      if (localY >= childY && localY < childY + nestHeight) {
+        return seg.nodeId
+      }
+      childY += nestHeight + 8
+    } else {
+      childY += NESTED_NODE_HEIGHT + 12
+    }
+  }
+  return null
+}
+
 function resolveChapterDropIndex(
   localY: number,
   segments: ChapterSegment[],
@@ -71,9 +82,7 @@ function resolveChapterDropIndex(
   let childY = CHAPTER_GROUP_PADDING + 40
   for (let i = 0; i < segments.length; i++) {
     const seg = segments[i]
-    const segHeight = seg.kind === 'video'
-      ? NESTED_NODE_HEIGHT + 8 + (seg.events.length > 0 ? 56 : 0) + 8
-      : NESTED_NODE_HEIGHT + 12
+    const segHeight = videoSegmentHeight(seg)
     if (localY > childY + segHeight / 2) afterIndex = i
     childY += segHeight
   }
@@ -269,26 +278,22 @@ function resolveDropAtPosition(
 
     insideChapter = true
 
-    if (CHAPTER_NEST_TYPES.has(nodeType)) {
-      const chapterNode = project.nodes.find(n => n.id === group.id)
-      if (!chapterNode) continue
+    const chapterNode = project.nodes.find(n => n.id === group.id)
+    if (!chapterNode) continue
 
-      const block = parseChapterBlockForLayout(project, chapterNode, chapterVideos)
-      const localY = centerY - gy
-      const afterIndex = resolveChapterDropIndex(localY, block.segments)
-
-      return { scope: 'chapter', chapterNodeId: group.id, afterSegmentIndex: afterIndex }
-    }
+    const block = parseChapterBlockForLayout(project, chapterNode, chapterVideos)
+    const localY = centerY - gy
 
     if (VIDEO_NEST_TYPES.has(nodeType)) {
-      const children = graphNodes.filter(n => n.parentId === group.id && (n.data as { nodeType: string }).nodeType === 'video')
-      for (const child of children) {
-        const cx = gx + child.position.x
-        const cy = gy + child.position.y
-        if (centerX >= cx && centerX <= cx + NESTED_NODE_WIDTH && centerY >= cy && centerY <= cy + NESTED_NODE_HEIGHT + 40) {
-          return { scope: 'video', videoNodeId: child.id }
-        }
+      const videoNodeId = resolveVideoNestHit(localY, block.segments)
+      if (videoNodeId) {
+        return { scope: 'video', videoNodeId }
       }
+    }
+
+    if (CHAPTER_NEST_TYPES.has(nodeType)) {
+      const afterIndex = resolveChapterDropIndex(localY, block.segments)
+      return { scope: 'chapter', chapterNodeId: group.id, afterSegmentIndex: afterIndex }
     }
   }
 

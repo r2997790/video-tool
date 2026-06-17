@@ -1,6 +1,7 @@
-import type { AdminChapter, AdminChapterVideo, FlowProject } from '../types'
+import type { AdminChapter, AdminChapterVideo, FlowNode, FlowProject } from '../types'
 import { isFreePositionNode } from './flowGraphLayout'
 import { canConnect } from './flowSchema'
+import { isVideoAttachType } from './flowRuntime'
 import {
   applyTimelineEdit,
   autoLayoutProject,
@@ -28,6 +29,32 @@ function isTimelineEdit(edit: FlowEdit): edit is TimelineEdit {
   return !['connectNodes', 'disconnectEdge', 'reconnectEdge', 'removeNodes', 'updatePositions', 'autoLayout', 'replaceProject'].includes(edit.type)
 }
 
+function applyAttachPlacement(
+  project: FlowProject,
+  fromNode: FlowNode,
+  toNode: FlowNode,
+): FlowProject {
+  if (!isVideoAttachType(toNode.type)) return project
+
+  let placement: 'during' | 'between' | undefined
+  if (fromNode.type === 'video') {
+    placement = 'during'
+  } else if (!isVideoAttachType(fromNode.type)) {
+    placement = 'between'
+  }
+
+  if (!placement) return project
+
+  return {
+    ...project,
+    nodes: project.nodes.map(n =>
+      n.id === toNode.id
+        ? { ...n, parameters: { ...n.parameters, placement } }
+        : n,
+    ),
+  }
+}
+
 function connectWithSpine(
   project: FlowProject,
   from: string,
@@ -39,8 +66,9 @@ function connectWithSpine(
   if (!fromNode || !toNode || !canConnect(fromNode, toNode)) return project
   if (project.connections.some(c => c.from === from && c.to === to)) return project
 
-  const connections = [...project.connections, { from, to }]
-  const next = { ...project, connections }
+  let next = applyAttachPlacement(project, fromNode, toNode)
+  const connections = [...next.connections, { from, to }]
+  next = { ...next, connections }
   const fromChapter = findChapterAncestor(project, from)
   const toChapter = findChapterAncestor(project, to)
   if (fromChapter && toChapter && fromChapter.id === toChapter.id) {
@@ -76,8 +104,9 @@ export function applyFlowEdit(
       const fromNode = project.nodes.find(n => n.id === edit.newFrom)
       const toNode = project.nodes.find(n => n.id === edit.newTo)
       if (!fromNode || !toNode || !canConnect(fromNode, toNode)) return project
+      let next = applyAttachPlacement(project, fromNode, toNode)
       connections = [...connections, { from: edit.newFrom, to: edit.newTo }]
-      const next = { ...project, connections }
+      next = { ...next, connections }
       const fromChapter = findChapterAncestor(project, edit.newFrom)
       const toChapter = findChapterAncestor(project, edit.newTo)
       if (fromChapter && toChapter && fromChapter.id === toChapter.id) {

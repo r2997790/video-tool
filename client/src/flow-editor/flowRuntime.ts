@@ -11,6 +11,26 @@ export function isVideoAttachType(type: FlowNode['type']): boolean {
   return (VIDEO_ATTACH_TYPES as readonly string[]).includes(type)
 }
 
+/** Walk attach-node chain upward to the owning video node. */
+export function findVideoAncestor(flow: FlowProject, nodeId: string): FlowNode | null {
+  const node = flow.nodes.find(n => n.id === nodeId)
+  if (!node || !isVideoAttachType(node.type)) return null
+
+  const seen = new Set<string>()
+  let currentId: string | null = nodeId
+  while (currentId && !seen.has(currentId)) {
+    seen.add(currentId)
+    const incoming = flow.connections.find(c => c.to === currentId)
+    if (!incoming) return null
+    const parent = flow.nodes.find(n => n.id === incoming.from)
+    if (!parent) return null
+    if (parent.type === 'video') return parent
+    if (!isVideoAttachType(parent.type)) return null
+    currentId = parent.id
+  }
+  return null
+}
+
 export function isPlaybackTriggerNode(node: FlowNode, flow?: FlowProject): boolean {
   if (!isVideoAttachType(node.type)) return false
   if (!flow) return node.type === 'pause' || node.type === 'toaster'

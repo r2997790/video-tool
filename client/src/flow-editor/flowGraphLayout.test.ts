@@ -135,7 +135,26 @@ describe('flowGraphLayout', () => {
     expect(target).toEqual({ scope: 'top' })
   })
 
-  it('resolveInsertDropTarget returns chapter scope when dropped inside group', () => {
+  it('resolveInsertDropTarget returns video scope when attach type dropped on video nest zone', () => {
+    const project = buildChapterFlow()
+    const graph = projectToGraph(project, ctx.chapters, ctx.chapterVideos)
+    const chapter = project.nodes.find(n => n.type === 'chapter')!
+    const video = project.nodes.find(n => n.type === 'video')!
+    const group = graph.find(n => n.id === chapter.id)!
+
+    const target = resolveInsertDropTarget(
+      project,
+      { x: group!.position.x + 40, y: group!.position.y + 120 },
+      'question',
+      graph,
+      ctx.chapters,
+      ctx.chapterVideos,
+    )
+
+    expect(target).toEqual({ scope: 'video', videoNodeId: video.id })
+  })
+
+  it('resolveInsertDropTarget returns chapter scope when attach type dropped below video nest', () => {
     const project = buildChapterFlow()
     const graph = projectToGraph(project, ctx.chapters, ctx.chapterVideos)
     const chapter = project.nodes.find(n => n.type === 'chapter')!
@@ -143,7 +162,7 @@ describe('flowGraphLayout', () => {
 
     const target = resolveInsertDropTarget(
       project,
-      { x: group!.position.x + 40, y: group!.position.y + 120 },
+      { x: group!.position.x + 40, y: group!.position.y + 260 },
       'question',
       graph,
       ctx.chapters,

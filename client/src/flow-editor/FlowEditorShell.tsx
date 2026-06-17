@@ -6,6 +6,7 @@ import { VisualFlowEditor } from './VisualFlowEditor'
 import { FlowNodePropertyPanel } from './FlowNodePropertyPanel'
 import { useFlowEditorState } from './useFlowEditorState'
 import { collectFlowFieldIds } from './flowRuntime'
+import { findChapterAncestor } from './flowTimeline'
 import { ConfirmModal } from '../components/ConfirmModal'
 import { useToast } from '../components/Toast'
 import type { FlowNode } from '../types'
@@ -178,6 +179,7 @@ export function FlowEditorShell({ flowSlug }: FlowEditorShellProps) {
             <FlowNodePropertyPanel
               flowSlug={flowSlug}
               selected={selectedNode}
+              inChapter={!!findChapterAncestor(project, selectedNode.id)}
               chapters={chapters}
               chapterVideos={chapterVideos}
               onChaptersReload={state.refreshVideos}

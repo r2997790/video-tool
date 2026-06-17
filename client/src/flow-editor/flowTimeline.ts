@@ -1,5 +1,5 @@
 import type { AdminChapter, AdminChapterVideo, FlowConnection, FlowNode, FlowProject } from '../types'
-import { getChapterIdFromNode, getNextNodes, getNextTraversalNode, getStartNodes, isPlaybackTriggerNode, isVideoAttachType } from './flowRuntime'
+import { findVideoAncestor, getChapterIdFromNode, getNextNodes, getNextTraversalNode, getStartNodes, isPlaybackTriggerNode, isVideoAttachType } from './flowRuntime'
 import { canConnect, newNode } from './flowSchema'
 
 export type TimelineVideoSegment = {
@@ -228,6 +228,10 @@ export function resolveInsertTarget(
   if (isVideoAttachType(type)) {
     if (selectedNode?.type === 'video') {
       return { scope: 'video', videoNodeId: selectedNode.id }
+    }
+    if (selectedNode && isPlaybackTriggerNode(selectedNode, project)) {
+      const video = findVideoAncestor(project, selectedNode.id)
+      if (video) return { scope: 'video', videoNodeId: video.id }
     }
     if (selectedNode) {
       const chapter = findChapterAncestor(project, selectedNode.id)
@@ -620,7 +624,7 @@ export function reorderEventsUnderVideo(
 ): FlowProject {
   const events = orderedIds
     .map(id => project.nodes.find(n => n.id === id))
-    .filter((n): n is FlowNode => !!n && (n.type === 'pause' || n.type === 'toaster'))
+    .filter((n): n is FlowNode => !!n && isVideoAttachType(n.type))
 
   const eventIdSet = new Set(events.map(e => e.id))
   if (eventIdSet.size === 0) return project
@@ -640,7 +644,7 @@ export function reorderEventsUnderVideo(
     for (const c of project.connections.filter(x => x.from === videoNodeId)) {
       if (!eventIdSet.has(c.to)) {
         const target = project.nodes.find(n => n.id === c.to)
-        if (target && target.type !== 'pause' && target.type !== 'toaster') {
+        if (target && !isVideoAttachType(target.type)) {
           afterChain = c.to
         }
       }

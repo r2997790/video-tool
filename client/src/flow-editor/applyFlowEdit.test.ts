@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { applyFlowEdit } from './applyFlowEdit'
 import { newNode } from './flowSchema'
-import { projectToTimeline, findChapterAncestor } from './flowTimeline'
+import { projectToTimeline, findChapterAncestor, resolveInsertTarget, reorderEventsUnderVideo } from './flowTimeline'
 import type { FlowProject } from '../types'
 import type { AdminChapter, AdminChapterVideo } from '../types'
 
@@ -145,6 +145,63 @@ describe('applyFlowEdit sync', () => {
     expect(findChapterAncestor(viaInsert, newQ.id)?.id).toBe(chapter.id)
     expect(viaTimeline.nodes.length).toBeGreaterThan(project.nodes.length)
     expect(viaVisual.connections.length).toBeGreaterThanOrEqual(project.connections.length)
+  })
+
+  it('connectNodes from video sets placement during on question', () => {
+    let project = buildChapterFlow()
+    const video = project.nodes.find(n => n.type === 'video')!
+    const q = newNode('question', 'During question')
+    project = { ...project, nodes: [...project.nodes, q] }
+
+    project = applyFlowEdit(project, {
+      type: 'connectNodes',
+      from: video.id,
+      to: q.id,
+    }, ctx)
+
+    expect(project.nodes.find(n => n.id === q.id)?.parameters.placement).toBe('during')
+  })
+
+  it('resolveInsertTarget targets parent video when during-event is selected', () => {
+    let project = buildChapterFlow()
+    const video = project.nodes.find(n => n.type === 'video')!
+    const pause = newNode('pause', 'Pause')
+    project = applyFlowEdit(project, {
+      type: 'insert',
+      node: pause,
+      target: { scope: 'video', videoNodeId: video.id },
+    }, ctx)
+
+    const inserted = project.nodes.find(n => n.name === 'Pause')!
+    const target = resolveInsertTarget(project, inserted, 'toaster', ctx.chapterVideos)
+    expect(target).toEqual({ scope: 'video', videoNodeId: video.id })
+  })
+
+  it('reorderEventsUnderVideo rewires question nodes in event chain', () => {
+    let project = buildChapterFlow()
+    const video = project.nodes.find(n => n.type === 'video')!
+    const q1 = newNode('question', 'Q during 1')
+    q1.parameters = { placement: 'during', triggerAtSeconds: 10 }
+    const q2 = newNode('question', 'Q during 2')
+    q2.parameters = { placement: 'during', triggerAtSeconds: 20 }
+    project = applyFlowEdit(project, {
+      type: 'insert',
+      node: q1,
+      target: { scope: 'video', videoNodeId: video.id },
+    }, ctx)
+    project = applyFlowEdit(project, {
+      type: 'insert',
+      node: q2,
+      target: { scope: 'video', videoNodeId: video.id },
+    }, ctx)
+
+    const q1Node = project.nodes.find(n => n.name === 'Q during 1')!
+    const q2Node = project.nodes.find(n => n.name === 'Q during 2')!
+    project = reorderEventsUnderVideo(project, video.id, [q2Node.id, q1Node.id])
+
+    const fromVideo = project.connections.filter(c => c.from === video.id).map(c => c.to)
+    expect(fromVideo).toContain(q2Node.id)
+    expect(project.connections.some(c => c.from === q2Node.id && c.to === q1Node.id)).toBe(true)
   })
 
   it('updatePositions does not change connections', () => {

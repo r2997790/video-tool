@@ -19,6 +19,7 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import type { FlowNode } from '../types'
 import { canConnect } from './flowSchema'
+import { isVideoAttachType } from './flowRuntime'
 import {
   applyTimelineEdit,
   canNestInChapter,
@@ -209,7 +210,7 @@ export function TimelineEditor({ state }: TimelineEditorProps) {
     // Drop on video nest zone
     if (overId.startsWith('video-nest:')) {
       const videoNodeId = overId.replace('video-nest:', '')
-      if (draggedNode && (draggedNode.type === 'pause' || draggedNode.type === 'toaster')) {
+      if (draggedNode && isVideoAttachType(draggedNode.type)) {
         applyEdit({ type: 'moveNodeToVideo', nodeId: activeNodeId, videoNodeId })
       }
       return
@@ -376,7 +377,7 @@ export function TimelineEditor({ state }: TimelineEditorProps) {
                       </SortableRowShell>
                       <DropZone
                         id={`video-nest:${seg.nodeId}`}
-                        label={seg.events.length === 0 ? 'Drop or add Pause / Pop-up here' : 'Drop pause / pop-up here'}
+                        label={seg.events.length === 0 ? 'Drop pause / question / AI chat / pop-up here' : 'Drop during-video event here'}
                         className="timeline-nested-events"
                       />
                       <SortableContext items={eventIds} strategy={verticalListSortingStrategy}>
