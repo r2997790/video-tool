@@ -10,6 +10,7 @@ type Callout = {
 
 type Slide = {
   label: string
+  caption?: string
   alt: string
   content: ReactNode
   callouts: Callout[]
@@ -18,6 +19,7 @@ type Slide = {
 const SLIDES: Slide[] = [
   {
     label: 'Build your demo',
+    caption: 'Route every viewer by role, capture intent in-video, and sync leads automatically. This is the visual flow builder — drag, branch, publish.',
     alt: 'Visual flow editor with branching demo paths, chapters, and in-video engagement',
     content: <FlowBuilderMock />,
     callouts: [
@@ -77,7 +79,10 @@ export function HeroProductShowcase() {
       }}
     >
       <div className="lp-hero-showcase-header">
-        <p className="lp-hero-showcase-label">{slide.label}</p>
+        <div className="lp-hero-showcase-heading">
+          <p className="lp-hero-showcase-label">{slide.label}</p>
+          {slide.caption && <p className="lp-hero-showcase-caption">{slide.caption}</p>}
+        </div>
         <div className="lp-hero-showcase-dots" role="tablist" aria-label="Product showcase slides">
           {SLIDES.map((s, i) => (
             <button

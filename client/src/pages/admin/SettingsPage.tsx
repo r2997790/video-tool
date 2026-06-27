@@ -11,6 +11,7 @@ import { EventAccessSettings } from './EventAccessSettings'
 const SETTINGS_TABS = [
   { id: 'behavior', label: 'Behavior' },
   { id: 'theme', label: 'Theme' },
+  { id: 'marketing', label: 'Marketing' },
   { id: 'leads', label: 'Leads' },
   { id: 'events', label: 'Events' },
   { id: 'integrations', label: 'Integrations' },
@@ -78,6 +79,12 @@ function buildPayload(config: Record<string, unknown>) {
     leadNotifyEmail: config.leadNotifyEmail ?? '',
     attendeeWebhookUrl: config.attendeeWebhookUrl ?? '',
     blockedEmailDomainsJson: config.blockedEmailDomainsJson ?? '[]',
+    salesEmail: config.salesEmail ?? '',
+    supportEmail: config.supportEmail ?? '',
+    privacyEmail: config.privacyEmail ?? '',
+    legalEmail: config.legalEmail ?? '',
+    dpoEmail: config.dpoEmail ?? '',
+    trustLogosJson: config.trustLogosJson ?? '[]',
   }
 }
 
@@ -236,6 +243,90 @@ export function SettingsPage() {
     </div>
   )
 
+  type TrustLogoRow = { name: string; logoUrl: string }
+
+  const parseTrustLogos = (): TrustLogoRow[] => {
+    try {
+      const parsed = JSON.parse((config.trustLogosJson as string) || '[]')
+      if (!Array.isArray(parsed)) return []
+      return parsed.filter(
+        (row): row is TrustLogoRow =>
+          row && typeof row.name === 'string' && typeof row.logoUrl === 'string',
+      )
+    } catch {
+      return []
+    }
+  }
+
+  const setTrustLogos = (rows: TrustLogoRow[]) => {
+    setConfig(c => ({ ...c!, trustLogosJson: JSON.stringify(rows) }))
+  }
+
+  const trustLogos = parseTrustLogos()
+
+  const marketingPanel = (
+    <div className="admin-card">
+      <p style={{ color: '#9b9d9f', fontSize: 13, marginTop: 0 }}>
+        Contact emails appear on the landing page, legal pages, and demo error screens.
+        Trust logos show in the above-the-fold hero when at least one logo is configured.
+      </p>
+      <AdminFieldLabel label="Sales email" help="Enterprise pricing and Talk to sales links">
+        <input className="admin-input" type="email" value={(config.salesEmail as string) || ''}
+          placeholder="sales@yourcompany.com"
+          onChange={e => setConfig(c => ({ ...c!, salesEmail: e.target.value }))} />
+      </AdminFieldLabel>
+      <AdminFieldLabel label="Support email" help="Shown when a demo fails to load">
+        <input className="admin-input" type="email" value={(config.supportEmail as string) || ''}
+          placeholder="support@yourcompany.com"
+          onChange={e => setConfig(c => ({ ...c!, supportEmail: e.target.value }))} />
+      </AdminFieldLabel>
+      <AdminFieldLabel label="Privacy email" help="Privacy Policy contact">
+        <input className="admin-input" type="email" value={(config.privacyEmail as string) || ''}
+          placeholder="privacy@yourcompany.com"
+          onChange={e => setConfig(c => ({ ...c!, privacyEmail: e.target.value }))} />
+      </AdminFieldLabel>
+      <AdminFieldLabel label="Legal email" help="Terms & Conditions contact">
+        <input className="admin-input" type="email" value={(config.legalEmail as string) || ''}
+          placeholder="legal@yourcompany.com"
+          onChange={e => setConfig(c => ({ ...c!, legalEmail: e.target.value }))} />
+      </AdminFieldLabel>
+      <AdminFieldLabel label="DPO email" help="GDPR / data protection contact">
+        <input className="admin-input" type="email" value={(config.dpoEmail as string) || ''}
+          placeholder="dpo@yourcompany.com"
+          onChange={e => setConfig(c => ({ ...c!, dpoEmail: e.target.value }))} />
+      </AdminFieldLabel>
+
+      <div style={{ marginTop: 24 }}>
+        <AdminFieldLabel label="Trust logos" help="Company name and logo URL for the landing page trust strip">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {trustLogos.map((row, index) => (
+              <div key={index} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 8 }}>
+                <input className="admin-input" placeholder="Company name" value={row.name}
+                  onChange={e => {
+                    const next = [...trustLogos]
+                    next[index] = { ...next[index], name: e.target.value }
+                    setTrustLogos(next)
+                  }} />
+                <input className="admin-input" placeholder="Logo URL" value={row.logoUrl}
+                  onChange={e => {
+                    const next = [...trustLogos]
+                    next[index] = { ...next[index], logoUrl: e.target.value }
+                    setTrustLogos(next)
+                  }} />
+                <button type="button" className="admin-btn" onClick={() => setTrustLogos(trustLogos.filter((_, i) => i !== index))}>
+                  Remove
+                </button>
+              </div>
+            ))}
+            <button type="button" className="admin-btn" onClick={() => setTrustLogos([...trustLogos, { name: '', logoUrl: '' }])}>
+              Add logo
+            </button>
+          </div>
+        </AdminFieldLabel>
+      </div>
+    </div>
+  )
+
   const eventsPanel = (
     <>
       <div className="admin-card">
@@ -345,6 +436,7 @@ export function SettingsPage() {
       ) : (
         <div className="admin-settings-tab-panel" role="tabpanel">
           {activeTab === 'behavior' && behaviorPanel}
+          {activeTab === 'marketing' && marketingPanel}
           {activeTab === 'leads' && leadsPanel}
           {activeTab === 'events' && eventsPanel}
           {activeTab === 'integrations' && integrationsPanel}

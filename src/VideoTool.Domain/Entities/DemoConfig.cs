@@ -31,5 +31,11 @@ public class DemoConfig
     public string? DemoChatSubtitle { get; set; }
     public string? AttendeeWebhookUrl { get; set; }
     public string? BlockedEmailDomainsJson { get; set; }
+    public string? SalesEmail { get; set; }
+    public string? SupportEmail { get; set; }
+    public string? PrivacyEmail { get; set; }
+    public string? LegalEmail { get; set; }
+    public string? DpoEmail { get; set; }
+    public string? TrustLogosJson { get; set; }
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }

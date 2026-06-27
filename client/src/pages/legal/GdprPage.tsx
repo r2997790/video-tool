@@ -1,6 +1,15 @@
 import { Link } from 'react-router-dom'
 
-import { LegalPageLayout } from './LegalPageLayout'
+import { LegalPageLayout, useLegalContact } from './LegalPageLayout'
+import { mailtoHref, resolveContactEmail } from '../../utils/contactEmail'
+
+function DpoContactLink() {
+  const contact = useLegalContact()
+  const email = resolveContactEmail(contact, 'dpo')
+  const href = mailtoHref(email)
+  if (!href) return <span>our Data Protection Officer (configure in admin settings)</span>
+  return <a href={href}>{email}</a>
+}
 
 export function GdprPage() {
   return (
@@ -59,8 +68,7 @@ export function GdprPage() {
 
       <h2>7. Data Protection Officer</h2>
       <p>
-        For GDPR-related requests, contact our Data Protection Officer at{' '}
-        <a href="mailto:dpo@example.com">dpo@example.com</a>. We aim to respond within 30 days.
+        For GDPR-related requests, contact <DpoContactLink />. We aim to respond within 30 days.
       </p>
 
       <h2>8. Sub-processors</h2>

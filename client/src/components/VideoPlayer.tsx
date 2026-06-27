@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef, useCallback, useState } from 'react'
 import YouTube, { type YouTubeEvent, type YouTubePlayer } from 'react-youtube'
 
 interface VideoPlayerProps {
@@ -16,6 +16,7 @@ export function VideoPlayer({ chapter, playing, held = false, videoKey, pauseEna
   const videoRef = useRef<HTMLVideoElement>(null)
   const playerRef = useRef<YouTubePlayer | null>(null)
   const intervalRef = useRef<number | null>(null)
+  const [ytReady, setYtReady] = useState(false)
 
   const reportTime = useCallback(() => {
     if (!onTimeUpdate) return
@@ -41,6 +42,7 @@ export function VideoPlayer({ chapter, playing, held = false, videoKey, pauseEna
 
   useEffect(() => {
     playerRef.current = null
+    setYtReady(false)
   }, [videoKey])
 
   useEffect(() => {
@@ -82,6 +84,7 @@ export function VideoPlayer({ chapter, playing, held = false, videoKey, pauseEna
 
   const onYtReady = (e: YouTubeEvent) => {
     playerRef.current = e.target
+    setYtReady(true)
     if (playing && !held) e.target.playVideo()
     else e.target.pauseVideo()
     reportTime()
@@ -108,6 +111,11 @@ export function VideoPlayer({ chapter, playing, held = false, videoKey, pauseEna
     return (
       <div className="vd-yt-wrap">
         {isLive && <span className="vd-live-badge">Live</span>}
+        {!ytReady && (
+          <div className="vd-yt-loading" aria-hidden="true">
+            <div className="vd-loading-spinner" />
+          </div>
+        )}
         <YouTube
           key={videoKey}
           videoId={chapter.videoValue}

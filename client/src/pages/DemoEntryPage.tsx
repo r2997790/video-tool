@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
+import { DemoPageSkeleton } from '../components/DemoPageSkeleton'
 import { NoDemoAvailablePage } from './NoDemoAvailablePage'
 
 export function DemoEntryPage() {
@@ -27,7 +28,7 @@ export function DemoEntryPage() {
     return <Navigate to={`/flow/${encodeURIComponent(flowParam)}${qs ? `?${qs}` : ''}`} replace />
   }
 
-  if (loading) return <div className="vd-loading">Loading demo...</div>
+  if (loading) return <DemoPageSkeleton />
   if (defaultSlug) return <Navigate to={`/flow/${encodeURIComponent(defaultSlug)}`} replace />
 
   return <NoDemoAvailablePage />

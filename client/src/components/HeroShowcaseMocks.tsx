@@ -45,7 +45,7 @@ export function FlowBuilderMock() {
             <span className="lp-showcase-node-sub">Routes to tailored chapters</span>
           </div>
 
-          <div className="lp-showcase-node lp-showcase-node-branch" style={{ top: '8%', left: '52%' }}>
+          <div className="lp-showcase-node lp-showcase-node-branch lp-showcase-node-branch-animate" style={{ top: '8%', left: '52%' }}>
             <span className="lp-showcase-node-type">branch</span>
             <strong>Role-based paths</strong>
             <span className="lp-showcase-node-sub">Leader vs practitioner</span>

@@ -110,9 +110,42 @@ public class DemoController : ControllerBase
             primaryColor = config.ThemePrimaryColor,
             accentColor = config.ThemeAccentColor,
             tagline = config.DemoChatSubtitle,
+            contact = new
+            {
+                sales = config.SalesEmail,
+                support = config.SupportEmail,
+                privacy = config.PrivacyEmail,
+                legal = config.LegalEmail,
+                dpo = config.DpoEmail,
+            },
+            trustLogos = ParseTrustLogos(config.TrustLogosJson),
             flows,
             events,
         });
+    }
+
+    private static List<object> ParseTrustLogos(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return new List<object>();
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            if (doc.RootElement.ValueKind != JsonValueKind.Array) return new List<object>();
+            var list = new List<object>();
+            foreach (var item in doc.RootElement.EnumerateArray())
+            {
+                if (item.ValueKind != JsonValueKind.Object) continue;
+                var name = item.TryGetProperty("name", out var n) ? n.GetString() : null;
+                var logoUrl = item.TryGetProperty("logoUrl", out var u) ? u.GetString() : null;
+                if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(logoUrl)) continue;
+                list.Add(new { name = name.Trim(), logoUrl = logoUrl.Trim() });
+            }
+            return list;
+        }
+        catch
+        {
+            return new List<object>();
+        }
     }
 
     [HttpGet("config")]

@@ -185,6 +185,19 @@ export interface HomePageFlow {
   url: string
 }
 
+export interface HomePageContact {
+  sales?: string | null
+  support?: string | null
+  privacy?: string | null
+  legal?: string | null
+  dpo?: string | null
+}
+
+export interface TrustLogo {
+  name: string
+  logoUrl: string
+}
+
 export interface HomePageEvent {
   slug: string
   title: string
@@ -202,6 +215,8 @@ export interface HomePageData {
   primaryColor: string
   accentColor: string
   tagline: string | null
+  contact?: HomePageContact
+  trustLogos?: TrustLogo[]
   flows: HomePageFlow[]
   events: HomePageEvent[]
 }

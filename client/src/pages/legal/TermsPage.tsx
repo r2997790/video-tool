@@ -1,4 +1,13 @@
-import { LegalPageLayout } from './LegalPageLayout'
+import { LegalPageLayout, useLegalContact } from './LegalPageLayout'
+import { mailtoHref, resolveContactEmail } from '../../utils/contactEmail'
+
+function LegalContactLink({ kind, label }: { kind: 'legal' | 'privacy' | 'dpo'; label: string }) {
+  const contact = useLegalContact()
+  const email = resolveContactEmail(contact, kind)
+  const href = mailtoHref(email)
+  if (!href) return <span>{label} (configure in admin settings)</span>
+  return <a href={href}>{email}</a>
+}
 
 export function TermsPage() {
   return (
@@ -68,7 +77,7 @@ export function TermsPage() {
       </p>
 
       <p className="lp-legal-contact">
-        Questions? Contact <a href="mailto:legal@example.com">legal@example.com</a>
+        Questions? Contact <LegalContactLink kind="legal" label="legal contact" />
       </p>
     </LegalPageLayout>
   )

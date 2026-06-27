@@ -153,7 +153,62 @@
   flex-wrap: wrap;
   gap: 12px;
   justify-content: center;
-  margin-bottom: 32px;
+  margin-bottom: 12px;
+}
+
+.lp-hero-trust-line {
+  margin: 0 auto 20px;
+  font-size: 13px;
+  color: var(--landing-muted);
+  text-align: center;
+}
+
+.lp-trust-strip {
+  width: 100%;
+  margin: 0 auto 24px;
+  text-align: center;
+}
+
+.lp-trust-strip-label {
+  margin: 0 0 12px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--landing-muted);
+}
+
+.lp-trust-strip-logos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 20px 28px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lp-trust-strip-logos img {
+  display: block;
+  max-height: 28px;
+  max-width: 120px;
+  width: auto;
+  opacity: 0.72;
+  filter: grayscale(1);
+}
+
+.lp-hero-showcase-heading {
+  flex: 1;
+  min-width: 0;
+}
+
+.lp-hero-showcase-caption {
+  margin: 6px 0 0;
+  max-width: 520px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--landing-muted);
 }
 
 .lp-btn-with-icon {
@@ -283,7 +338,7 @@
 
 .lp-hero-showcase-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
   margin-bottom: 12px;
@@ -546,6 +601,21 @@
 .lp-showcase-node-question .lp-showcase-node-type { background: #0ea5e9; }
 .lp-showcase-node-branch { border-color: #f59e0b; }
 .lp-showcase-node-branch .lp-showcase-node-type { background: #f59e0b; }
+
+.lp-showcase-node-branch-animate {
+  animation: lpBranchPulse 3.6s ease-in-out infinite;
+}
+
+@keyframes lpBranchPulse {
+  0%, 45%, 100% {
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.35);
+    border-color: #f59e0b;
+  }
+  22% {
+    box-shadow: 0 0 0 6px rgba(245, 158, 11, 0.12);
+    border-color: #fbbf24;
+  }
+}
 .lp-showcase-node-chapter { border-color: var(--landing-accent); }
 .lp-showcase-node-chapter .lp-showcase-node-type { background: var(--landing-accent); }
 .lp-showcase-node-video { border-color: #22c55e; }
@@ -2645,6 +2715,25 @@ button.lp-media-preview-link {
   .lp-title {
     font-size: clamp(24px, 7vw, 34px);
     max-width: 100%;
+  }
+
+  .lp-hero-actions {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    max-width: 360px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .lp-hero-actions .lp-btn {
+    width: 100%;
+  }
+
+  .lp-hero-trust-line {
+    font-size: 12px;
+    line-height: 1.5;
+    padding: 0 8px;
   }
 
   .lp-hero-showcase-callouts {

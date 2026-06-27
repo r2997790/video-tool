@@ -1,6 +1,7 @@
+import { lazy, Suspense } from 'react'
 import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router-dom'
 import { ToastProvider } from './components/Toast'
-import { DemoPage } from './pages/DemoPage'
+import { DemoPageSkeleton } from './components/DemoPageSkeleton'
 import { AdminLayout } from './pages/admin/AdminLayout'
 import { FlowEditorPage } from './pages/admin/FlowEditorPage'
 import { FlowLivePreviewPage } from './pages/admin/FlowLivePreviewPage'
@@ -27,6 +28,8 @@ import { TermsPage } from './pages/legal/TermsPage'
 import { PrivacyPage } from './pages/legal/PrivacyPage'
 import { GdprPage } from './pages/legal/GdprPage'
 
+const DemoPage = lazy(() => import('./pages/DemoPage').then(m => ({ default: m.DemoPage })))
+
 function LegacyFlowTabRedirect() {
   const { slug = '' } = useParams<{ slug: string }>()
   return <Navigate to={`/admin/flows/${slug}`} replace />
@@ -47,7 +50,11 @@ export default function App() {
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/gdpr" element={<GdprPage />} />
           <Route path="/demo" element={<DemoEntryPage />} />
-          <Route path="/flow/:flowSlug" element={<DemoPage />} />
+          <Route path="/flow/:flowSlug" element={
+            <Suspense fallback={<DemoPageSkeleton />}>
+              <DemoPage />
+            </Suspense>
+          } />
           <Route path="/event/:slug" element={<EventLobbyPage />} />
           <Route path="/admin/login" element={<LoginPage />} />
           <Route path="/admin/change-password" element={<ChangePasswordPage />} />

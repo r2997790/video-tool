@@ -1,4 +1,13 @@
-import { LegalPageLayout } from './LegalPageLayout'
+import { LegalPageLayout, useLegalContact } from './LegalPageLayout'
+import { mailtoHref, resolveContactEmail } from '../../utils/contactEmail'
+
+function PrivacyContactLink() {
+  const contact = useLegalContact()
+  const email = resolveContactEmail(contact, 'privacy')
+  const href = mailtoHref(email)
+  if (!href) return <span>Privacy enquiries (configure in admin settings)</span>
+  return <a href={href}>{email}</a>
+}
 
 export function PrivacyPage() {
   return (
@@ -65,7 +74,7 @@ export function PrivacyPage() {
       </p>
 
       <p className="lp-legal-contact">
-        Privacy enquiries: <a href="mailto:privacy@example.com">privacy@example.com</a>
+        Privacy enquiries: <PrivacyContactLink />
       </p>
     </LegalPageLayout>
   )

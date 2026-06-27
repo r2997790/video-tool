@@ -3,6 +3,7 @@ import { useParams, useSearchParams } from 'react-router-dom'
 import * as signalR from '@microsoft/signalr'
 import { api, getSessionId } from '../api'
 import { Button } from '../components/Button'
+import { DemoPageSkeleton } from '../components/DemoPageSkeleton'
 import { CancelIcon, CheckIcon, MessageIcon, RefreshIcon } from '../components/icons/uiIcons'
 import { FlowEventRegistrationOverlay } from '../components/FlowEventRegistrationOverlay'
 import { FlowOverlay } from '../components/FlowOverlay'
@@ -59,6 +60,7 @@ export function DemoPage() {
   const [chatOpen, setChatOpen] = useState(false)
   const [chaptersOpen, setChaptersOpen] = useState(false)
   const [retryKey, setRetryKey] = useState(0)
+  const [supportEmail, setSupportEmail] = useState<string | null>(null)
   const maxWatchedRef = useRef(0)
   const chatScrollRef = useRef<HTMLDivElement>(null)
   const hubRef = useRef<signalR.HubConnection | null>(null)
@@ -99,6 +101,12 @@ export function DemoPage() {
     if (available.length === 0) return chapters[0]?.id ?? null
     if (config.chapterPickEnabled) return available[0].id
     return available[Math.floor(Math.random() * available.length)].id
+  }, [])
+
+  useEffect(() => {
+    api.getHome()
+      .then(home => setSupportEmail(home.contact?.support?.trim() || null))
+      .catch(() => setSupportEmail(null))
   }, [])
 
   useEffect(() => {
@@ -438,30 +446,57 @@ export function DemoPage() {
   useEffect(() => {
     if (!data?.config.chatEnabled) return
 
-    const hub = new signalR.HubConnectionBuilder()
-      .withUrl('/hubs/chat')
-      .withAutomaticReconnect()
-      .build()
+    let cancelled = false
+    let hub: signalR.HubConnection | null = null
 
-    hub.on('ReceiveMessage', (msg: ChatMsg & { sessionId?: string }) => {
-      if (msg.sessionId && msg.sessionId !== sessionId) return
-      setChatMessages(prev => {
-        if (msg.role === 'user' && prev.some(m => m.role === 'user' && m.text === msg.text)) return prev
-        return [...prev, { role: msg.role as ChatMsg['role'], text: msg.text, id: msg.id, source: msg.source }]
+    const connect = () => {
+      if (cancelled) return
+
+      hub = new signalR.HubConnectionBuilder()
+        .withUrl('/hubs/chat')
+        .withAutomaticReconnect()
+        .build()
+
+      hub.on('ReceiveMessage', (msg: ChatMsg & { sessionId?: string }) => {
+        if (msg.sessionId && msg.sessionId !== sessionId) return
+        setChatMessages(prev => {
+          if (msg.role === 'user' && prev.some(m => m.role === 'user' && m.text === msg.text)) return prev
+          return [...prev, { role: msg.role as ChatMsg['role'], text: msg.text, id: msg.id, source: msg.source }]
+        })
+        if (data.config.notificationsEnabled && msg.role !== 'user' && Notification.permission === 'granted') {
+          new Notification('New message', { body: msg.text })
+        }
       })
-      if (data.config.notificationsEnabled && msg.role !== 'user' && Notification.permission === 'granted') {
-        new Notification('New message', { body: msg.text })
-      }
-    })
 
-    hub.start().then(() => hub.invoke('JoinSession', sessionId)).catch(console.error)
-    hubRef.current = hub
-    return () => { hub.stop() }
+      hub.start().then(() => hub?.invoke('JoinSession', sessionId)).catch(console.error)
+      hubRef.current = hub
+    }
+
+    const scheduleConnect = () => {
+      if (typeof window.requestIdleCallback === 'function') {
+        window.requestIdleCallback(() => connect(), { timeout: 2000 })
+      } else {
+        window.setTimeout(connect, 0)
+      }
+    }
+
+    scheduleConnect()
+
+    return () => {
+      cancelled = true
+      hub?.stop()
+    }
   }, [data?.config.chatEnabled, data?.config.notificationsEnabled, sessionId])
 
   useEffect(() => {
-    if (data?.config.notificationsEnabled && Notification.permission === 'default') {
-      Notification.requestPermission()
+    if (!data?.config.notificationsEnabled) return
+    const schedule = () => {
+      if (Notification.permission === 'default') Notification.requestPermission()
+    }
+    if (typeof window.requestIdleCallback === 'function') {
+      window.requestIdleCallback(schedule, { timeout: 3000 })
+    } else {
+      window.setTimeout(schedule, 500)
     }
   }, [data?.config.notificationsEnabled])
 
@@ -584,9 +619,9 @@ export function DemoPage() {
               <RefreshIcon />
               Retry
             </button>
-            <a className="btn btn-ghost-dark btn-sm btn-with-icon" href="mailto:support@example.com" style={{ textDecoration: 'none' }}>
+            <a className="btn btn-ghost-dark btn-sm btn-with-icon" href={supportEmail ? `mailto:${supportEmail}` : '/#pricing'} style={{ textDecoration: 'none' }}>
               <MessageIcon />
-              Contact support
+              {supportEmail ? 'Contact support' : 'Get help'}
             </a>
           </div>
         </div>
@@ -595,12 +630,7 @@ export function DemoPage() {
   }
 
   if (!data || !config) {
-    return (
-      <div className="vd-loading-shell">
-        <div className="vd-loading-spinner" aria-hidden="true" />
-        <p>Loading demo…</p>
-      </div>
-    )
+    return <DemoPageSkeleton />
   }
 
   const chatPanel = (

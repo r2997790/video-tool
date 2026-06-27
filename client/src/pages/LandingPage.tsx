@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 
 import { api } from '../api'
 
@@ -10,10 +10,10 @@ import { getAuthNav, type AuthMeResponse } from '../utils/authNav'
 import { FeatureExplorer } from '../components/FeatureExplorer'
 import { HeroProductShowcase } from '../components/HeroProductShowcase'
 import { HeroValueRotator } from '../components/HeroValueRotator'
-import { LandingDemoPanel } from '../components/LandingDemoPanel'
 import { LandingEventRegistrationModal } from '../components/LandingEventRegistrationModal'
 import { LandingFooter } from '../components/LandingFooter'
-import { LandingMediaCard, padHomeItems } from '../components/LandingMediaCard'
+import { LandingMediaCard } from '../components/LandingMediaCard'
+import { LandingTrustStrip } from '../components/LandingTrustStrip'
 import { useToast } from '../components/Toast'
 import type { FeaturePreviewKind } from '../components/FeatureExamplePreview'
 
@@ -34,24 +34,55 @@ import {
 
   MessageIcon,
 
-  PlayIcon,
-
   SettingsIcon,
   VideoIcon,
 
 } from '../components/icons/uiIcons'
 
+import { mailtoHref, resolveContactEmail } from '../utils/contactEmail'
+import { trackLandingCta } from '../utils/landingAnalytics'
+
 import '../styles/landing.css'
 
 
 
-const DEMO_SLOTS = [
+const DEMO_EXAMPLES = [
 
-  { pill: 'LIVE', pillVariant: 'live' as const, title: 'Demo Studio Live', meta: 'See the live experience', buttonLabel: 'Join Live', useLiveIcon: true, previewVariant: 'live' as const },
+  {
+    pill: 'LIVE',
+    pillVariant: 'live' as const,
+    title: 'Example: live session',
+    meta: 'See the live experience',
+    buttonLabel: 'Join Live',
+    useLiveIcon: true,
+    previewVariant: 'live' as const,
+    preferredSlug: 'default',
+    urlSuffix: '',
+  },
 
-  { pill: 'On Demand', pillVariant: 'ondemand' as const, title: 'Demo Studio On Demand', meta: 'Immediate engagement', buttonLabel: 'Launch On Demand', useLiveIcon: false, previewVariant: 'ondemand' as const },
+  {
+    pill: 'On Demand',
+    pillVariant: 'ondemand' as const,
+    title: 'Example: on-demand',
+    meta: 'Immediate engagement',
+    buttonLabel: 'Launch On Demand',
+    useLiveIcon: false,
+    previewVariant: 'ondemand' as const,
+    preferredSlug: 'test-demo',
+    urlSuffix: '',
+  },
 
-  { pill: 'Replay', pillVariant: 'replay' as const, title: 'Demo Studio Replay', meta: 'Catchup mode', buttonLabel: 'Watch Replay', useLiveIcon: false, previewVariant: 'replay' as const },
+  {
+    pill: 'Replay',
+    pillVariant: 'replay' as const,
+    title: 'Example: replay',
+    meta: 'Catchup mode',
+    buttonLabel: 'Watch Replay',
+    useLiveIcon: false,
+    previewVariant: 'replay' as const,
+    preferredSlug: 'default',
+    urlSuffix: '?chapter=1',
+  },
 
 ]
 
@@ -92,9 +123,9 @@ const FEATURES: {
 
     icon: FlowDesignIcon,
 
-    title: 'Visual flow editor',
+    title: 'Show each buyer only what they care about',
 
-    description: 'Build branching demo paths with drag-and-drop — no code required. Route viewers based on their answers.',
+    description: 'Drag-and-drop branching paths route viewers by their answers. No code.',
 
     preview: 'flow-editor',
 
@@ -104,9 +135,9 @@ const FEATURES: {
 
     icon: ChaptersIcon,
 
-    title: 'Chapter-based walkthroughs',
+    title: 'Buyers always know where they are',
 
-    description: 'Structure product tours as clear, navigable chapters so prospects always know where they are.',
+    description: 'Structure tours as clear, navigable chapters they can jump between.',
 
     preview: 'chapters',
 
@@ -116,9 +147,9 @@ const FEATURES: {
 
     icon: ChatIcon,
 
-    title: 'Live chat and AI assistance',
+    title: 'Answer questions the moment they arise',
 
-    description: 'Engage viewers in real time or let AI handle common questions while your team focuses on high-intent leads.',
+    description: 'Reply live, or let AI handle the common ones so your team chases high-intent leads.',
 
     preview: 'live-chat',
 
@@ -128,9 +159,9 @@ const FEATURES: {
 
     icon: CalendarIcon,
 
-    title: 'Scheduled broadcast events',
+    title: 'Run webinars that feel like a live keynote',
 
-    description: 'Run live demo sessions with registration, countdown lobbies, and automatic go-live at the scheduled time.',
+    description: 'Registration, countdown lobbies, and automatic go-live — on your schedule.',
 
     preview: 'events',
 
@@ -140,9 +171,9 @@ const FEATURES: {
 
     icon: DownloadIcon,
 
-    title: 'Lead capture and webhooks',
+    title: 'Every lead lands in your CRM',
 
-    description: 'Collect contact details during demos and push them straight to your CRM via webhooks or email alerts.',
+    description: 'Capture details mid-demo and push them to HubSpot, Slack, or email instantly.',
 
     preview: 'leads',
 
@@ -152,9 +183,9 @@ const FEATURES: {
 
     icon: SettingsIcon,
 
-    title: 'Fully branded experience',
+    title: 'Demos that look like your website',
 
-    description: 'Match your logo, colours, and fonts so every demo feels like a natural extension of your website.',
+    description: 'Match your logo, colours, and fonts so nothing feels third-party.',
 
     preview: 'branding',
 
@@ -164,9 +195,9 @@ const FEATURES: {
 
     icon: VideoIcon,
 
-    title: 'In-video engagement',
+    title: 'Capture intent without pausing the story',
 
-    description: 'Trigger timed pop-ups, pause for questions, and gate content — all without leaving the video player.',
+    description: 'Timed pop-ups, polls, and content gates — all inside the player.',
 
     preview: 'in-video',
 
@@ -176,9 +207,9 @@ const FEATURES: {
 
     icon: MessageIcon,
 
-    title: 'Slack and Teams integration',
+    title: 'Respond from tools you already live in',
 
-    description: 'Mirror demo chat into your team channels so sales and support can respond from tools they already use.',
+    description: 'Mirror demo chat into your channels for sales and support.',
 
     preview: 'integrations',
 
@@ -201,6 +232,8 @@ const PRICING_TIERS = [
     featured: false,
 
     cta: 'Start free trial',
+
+    ctaEvent: 'pricing_free_trial' as const,
 
     ctaTo: '/admin/login',
 
@@ -226,7 +259,9 @@ const PRICING_TIERS = [
 
     featured: false,
 
-    cta: 'Get started',
+    cta: 'Choose Starter',
+
+    ctaEvent: 'pricing_starter' as const,
 
     plan: 'starter' as const,
 
@@ -254,7 +289,9 @@ const PRICING_TIERS = [
 
     featured: true,
 
-    cta: 'Get started',
+    cta: 'Choose Pro',
+
+    ctaEvent: 'pricing_pro' as const,
 
     plan: 'pro' as const,
 
@@ -286,9 +323,9 @@ const PRICING_TIERS = [
 
     cta: 'Talk to sales',
 
-    ctaTo: 'mailto:sales@example.com',
+    ctaEvent: 'pricing_enterprise' as const,
 
-    external: true,
+    salesContact: true,
 
     highlights: [
 
@@ -320,9 +357,13 @@ function normalizeBrandColor(color: string, fallback: string) {
 
 
 
+function padHomeItems<T>(items: T[], count: number): T[] {
+  if (items.length === 0) return []
+  return Array.from({ length: count }, (_, index) => items[index % items.length])
+}
+
 export function LandingPage() {
 
-  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const toast = useToast()
   const [data, setData] = useState<HomePageData | null>(null)
@@ -331,7 +372,6 @@ export function LandingPage() {
 
   const [auth, setAuth] = useState<AuthMeResponse | null>(null)
 
-  const [demoPanelOpen, setDemoPanelOpen] = useState(false)
   const [registrationEvent, setRegistrationEvent] = useState<{ slug: string; title: string } | null>(null)
   const [billingConfigured, setBillingConfigured] = useState(false)
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null)
@@ -386,8 +426,6 @@ export function LandingPage() {
 
   const brandName = data?.brandName || 'Demo Studio'
 
-  const tagline = data?.tagline || 'Interactive video demos with chapters, live chat, and guided flows.'
-
   const primary = normalizeBrandColor(data?.primaryColor || '#5CF8D0', '#5CF8D0')
 
   const accent = normalizeBrandColor(data?.accentColor || '#47dcb0', '#47dcb0')
@@ -418,23 +456,18 @@ export function LandingPage() {
 
   const authNav = getAuthNav(auth)
 
-  const handleStartDemo = () => {
-    if (flows.length > 0) {
-      setDemoPanelOpen(true)
-      return
-    }
-    const demos = document.getElementById('demos')
-    if (demos) {
-      demos.scrollIntoView({ behavior: 'smooth' })
-      return
-    }
-    const eventsSection = document.getElementById('events')
-    if (eventsSection) {
-      eventsSection.scrollIntoView({ behavior: 'smooth' })
-      return
-    }
-    navigate(authNav.to)
+  const salesMailto = mailtoHref(resolveContactEmail(data?.contact, 'sales'))
+
+  const resolveDemoExampleUrl = (example: typeof DEMO_EXAMPLES[number]) => {
+    const flows = data?.flows ?? []
+    const match = flows.find(f => f.slug === example.preferredSlug) ?? flows[0]
+    if (!match) return null
+    return `${match.url}${example.urlSuffix}`
   }
+
+  const demoExampleCards = DEMO_EXAMPLES
+    .map(example => ({ example, url: resolveDemoExampleUrl(example) }))
+    .filter((item): item is { example: typeof DEMO_EXAMPLES[number]; url: string } => item.url != null)
 
   const handleCheckout = async (plan: 'starter' | 'pro') => {
     setCheckoutLoading(plan)
@@ -495,31 +528,41 @@ export function LandingPage() {
 
             <div className="lp-hero-inner">
 
-              <p className="lp-eyebrow">Interactive demo platform</p>
+              <p className="lp-eyebrow">For B2B product demos &amp; webinars</p>
 
               <h1 className="lp-title">
 
-                Experience <span className="lp-accent">{brandName}</span> in action
+                Turn product demos into a <span className="lp-accent">lead-qualifying machine</span>
 
               </h1>
 
-              <p className="lp-subtitle">{tagline}</p>
+              <p className="lp-subtitle">
+                Build branching video demos and live webinars that route each B2B buyer to what matters to them — then push qualified leads straight to your CRM. No dev team, no code.
+              </p>
 
               <div className="lp-hero-actions">
 
-                <button
-                  type="button"
-                  className="lp-btn lp-btn-primary lp-btn-with-icon"
-                  onClick={handleStartDemo}
+                <Link
+                  to="/admin/login"
+                  className="lp-btn lp-btn-primary"
+                  onClick={() => trackLandingCta('hero_build_demo')}
                 >
+                  Build your first demo — free
+                </Link>
 
-                  <PlayIcon />
-
-                  Start a demo
-
-                </button>
+                <Link
+                  to="/flow/default"
+                  className="lp-btn lp-btn-ghost"
+                  onClick={() => trackLandingCta('hero_watch_example')}
+                >
+                  Watch a live example
+                </Link>
 
               </div>
+
+              <p className="lp-hero-trust-line">14-day free trial · No credit card · Live in minutes</p>
+
+              <LandingTrustStrip logos={data?.trustLogos ?? []} />
 
             </div>
 
@@ -543,7 +586,7 @@ export function LandingPage() {
 
             <p className="lp-section-sub">
 
-              Everything you need to create, publish, and run interactive product demos that convert viewers into qualified leads.
+              Everything you need to turn passive viewers into qualified pipeline — build, brand, publish, and broadcast from one place.
 
             </p>
 
@@ -567,7 +610,7 @@ export function LandingPage() {
 
 
 
-        {flows.length > 0 && (
+        {demoExampleCards.length > 0 && (
 
           <section className="lp-section lp-section-demos" id="demos">
 
@@ -575,43 +618,37 @@ export function LandingPage() {
 
               <h2 className="lp-section-title">Available demos</h2>
 
-              <p className="lp-section-sub">Choose a guided experience to explore at your own pace.</p>
+              <p className="lp-section-sub">See Demo Studio in action — pick how you&apos;d watch it live, on demand, or as a replay.</p>
 
               <div className="lp-grid lp-grid-demos">
 
-                {padHomeItems(flows, 3).map((flow, index) => {
-
-                  const slot = DEMO_SLOTS[index]
-
-                  return (
+                {demoExampleCards.map(({ example, url }) => (
 
                     <LandingMediaCard
 
-                      key={`${flow.slug}-${index}`}
+                      key={example.title}
 
-                      pill={slot.pill}
+                      pill={example.pill}
 
-                      pillVariant={slot.pillVariant}
+                      pillVariant={example.pillVariant}
 
-                      title={slot.title}
+                      title={example.title}
 
-                      meta={slot.meta}
+                      meta={example.meta}
 
-                      buttonLabel={slot.buttonLabel}
+                      buttonLabel={example.buttonLabel}
 
-                      url={flow.url}
+                      url={url}
 
-                      previewSeed={flow.slug}
+                      previewSeed={example.preferredSlug}
 
-                      previewVariant={slot.previewVariant}
+                      previewVariant={example.previewVariant}
 
-                      buttonIcon={slot.useLiveIcon ? <LiveIcon /> : undefined}
+                      buttonIcon={example.useLiveIcon ? <LiveIcon /> : undefined}
 
                     />
 
-                  )
-
-                })}
+                ))}
 
               </div>
 
@@ -764,31 +801,49 @@ export function LandingPage() {
 
                   </ul>
 
-                  {'external' in tier && tier.external ? (
-
-                    <a href={tier.ctaTo} className={`lp-btn${tier.featured ? ' lp-btn-primary' : ' lp-btn-ghost'} lp-pricing-cta`}>
-
-                      {tier.cta}
-
-                    </a>
-
+                  {'salesContact' in tier && tier.salesContact ? (
+                    salesMailto ? (
+                      <a
+                        href={salesMailto}
+                        className={`lp-btn${tier.featured ? ' lp-btn-primary' : ' lp-btn-ghost'} lp-pricing-cta`}
+                        onClick={() => trackLandingCta('pricing_enterprise')}
+                      >
+                        {tier.cta}
+                      </a>
+                    ) : (
+                      <button
+                        type="button"
+                        className={`lp-btn${tier.featured ? ' lp-btn-primary' : ' lp-btn-ghost'} lp-pricing-cta`}
+                        onClick={() => {
+                          trackLandingCta('pricing_enterprise')
+                          toast.error('Sales contact email is not configured yet. Add it in Admin → Settings → Marketing.')
+                        }}
+                      >
+                        {tier.cta}
+                      </button>
+                    )
                   ) : 'plan' in tier && tier.plan && billingConfigured ? (
 
                     <button
                       type="button"
                       className={`lp-btn${tier.featured ? ' lp-btn-primary' : ' lp-btn-ghost'} lp-pricing-cta`}
                       disabled={checkoutLoading === tier.plan}
-                      onClick={() => handleCheckout(tier.plan!)}
+                      onClick={() => {
+                        trackLandingCta(tier.ctaEvent)
+                        handleCheckout(tier.plan!)
+                      }}
                     >
                       {checkoutLoading === tier.plan ? 'Redirecting…' : tier.cta}
                     </button>
 
                   ) : (
 
-                    <Link to={authNav.to} className={`lp-btn${tier.featured ? ' lp-btn-primary' : ' lp-btn-ghost'} lp-pricing-cta`}>
-
+                    <Link
+                      to={authNav.to}
+                      className={`lp-btn${tier.featured ? ' lp-btn-primary' : ' lp-btn-ghost'} lp-pricing-cta`}
+                      onClick={() => trackLandingCta(tier.ctaEvent)}
+                    >
                       {tier.cta}
-
                     </Link>
 
                   )}
@@ -807,15 +862,6 @@ export function LandingPage() {
 
 
 
-      {flows.length > 0 && (
-        <LandingDemoPanel
-          open={demoPanelOpen}
-          flowSlug={flows[0].slug}
-          flowName={flows[0].projectName}
-          onClose={() => setDemoPanelOpen(false)}
-        />
-      )}
-
       <LandingEventRegistrationModal
         open={registrationEvent !== null}
         eventSlug={registrationEvent?.slug ?? ''}
@@ -826,7 +872,7 @@ export function LandingPage() {
       <LandingFooter
         brandName={brandName}
         auth={auth}
-        showDemos={flows.length > 0}
+        showDemos={demoExampleCards.length > 0}
         showEvents={events.length > 0}
       />
 

@@ -73,6 +73,12 @@ public class AdminController : ControllerBase
         if (dto.DemoChatSubtitle != null) config.DemoChatSubtitle = dto.DemoChatSubtitle;
         if (dto.AttendeeWebhookUrl != null) config.AttendeeWebhookUrl = dto.AttendeeWebhookUrl;
         if (dto.BlockedEmailDomainsJson != null) config.BlockedEmailDomainsJson = dto.BlockedEmailDomainsJson;
+        if (dto.SalesEmail != null) config.SalesEmail = dto.SalesEmail;
+        if (dto.SupportEmail != null) config.SupportEmail = dto.SupportEmail;
+        if (dto.PrivacyEmail != null) config.PrivacyEmail = dto.PrivacyEmail;
+        if (dto.LegalEmail != null) config.LegalEmail = dto.LegalEmail;
+        if (dto.DpoEmail != null) config.DpoEmail = dto.DpoEmail;
+        if (dto.TrustLogosJson != null) config.TrustLogosJson = dto.TrustLogosJson;
         config.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
         return Ok(config);
@@ -1138,7 +1144,9 @@ public class AdminController : ControllerBase
         string? ThemeBrandName, string? ThemeChatTitle, string? ThemeLogoUrl,
         bool SlackEnabled, string? SlackChannelId, bool TeamsEnabled, string? TeamsServiceUrl,
         string? LeadWebhookUrl, string? LeadNotifyEmail, string? DemoChatSubtitle,
-        string? AttendeeWebhookUrl, string? BlockedEmailDomainsJson);
+        string? AttendeeWebhookUrl, string? BlockedEmailDomainsJson,
+        string? SalesEmail, string? SupportEmail, string? PrivacyEmail, string? LegalEmail, string? DpoEmail,
+        string? TrustLogosJson);
 
     public record ChapterDto(string? Slug, string? Name, string? Description, string? VideoLink, string? Duration, int SortOrder, bool IsLocked, bool? ShowDuration, string? GateJson);
     public record ChapterVideoDto(string? Title, string? VideoLink, string? Duration, int SortOrder = 0);

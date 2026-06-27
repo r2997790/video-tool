@@ -10,13 +10,27 @@ public static class SchemaMigrator
         await db.Database.EnsureCreatedAsync();
 
         var conn = db.Database.GetDbConnection();
-        if (conn.DataSource?.EndsWith(".db", StringComparison.OrdinalIgnoreCase) != true &&
-            !conn.ConnectionString.Contains("Data Source=", StringComparison.OrdinalIgnoreCase))
+        var isSqlite = conn.DataSource?.EndsWith(".db", StringComparison.OrdinalIgnoreCase) == true
+            || conn.ConnectionString.Contains("Data Source=", StringComparison.OrdinalIgnoreCase);
+        var isPostgres = conn.GetType().FullName?.Contains("Npgsql", StringComparison.OrdinalIgnoreCase) == true;
+
+        if (!isSqlite && !isPostgres)
             return;
 
         await conn.OpenAsync();
         try
         {
+            if (isPostgres)
+            {
+                await EnsurePostgresColumnAsync(conn, "DemoConfigs", "SalesEmail", "TEXT NULL");
+                await EnsurePostgresColumnAsync(conn, "DemoConfigs", "SupportEmail", "TEXT NULL");
+                await EnsurePostgresColumnAsync(conn, "DemoConfigs", "PrivacyEmail", "TEXT NULL");
+                await EnsurePostgresColumnAsync(conn, "DemoConfigs", "LegalEmail", "TEXT NULL");
+                await EnsurePostgresColumnAsync(conn, "DemoConfigs", "DpoEmail", "TEXT NULL");
+                await EnsurePostgresColumnAsync(conn, "DemoConfigs", "TrustLogosJson", "TEXT NULL");
+                return;
+            }
+
             await EnsureColumnAsync(conn, "DemoConfigs", "ChapterPickEnabled", "INTEGER NOT NULL DEFAULT 1");
             await EnsureColumnAsync(conn, "DemoConfigs", "PauseEnabled", "INTEGER NOT NULL DEFAULT 1");
             await EnsureColumnAsync(conn, "DemoConfigs", "ThemePrimaryColor", "TEXT NOT NULL DEFAULT '#5CF8D0'");
@@ -215,6 +229,12 @@ public static class SchemaMigrator
 
             await EnsureColumnAsync(conn, "DemoConfigs", "AttendeeWebhookUrl", "TEXT NULL");
             await EnsureColumnAsync(conn, "DemoConfigs", "BlockedEmailDomainsJson", "TEXT NULL");
+            await EnsureColumnAsync(conn, "DemoConfigs", "SalesEmail", "TEXT NULL");
+            await EnsureColumnAsync(conn, "DemoConfigs", "SupportEmail", "TEXT NULL");
+            await EnsureColumnAsync(conn, "DemoConfigs", "PrivacyEmail", "TEXT NULL");
+            await EnsureColumnAsync(conn, "DemoConfigs", "LegalEmail", "TEXT NULL");
+            await EnsureColumnAsync(conn, "DemoConfigs", "DpoEmail", "TEXT NULL");
+            await EnsureColumnAsync(conn, "DemoConfigs", "TrustLogosJson", "TEXT NULL");
 
             await EnsureTableAsync(conn, "EventAttendees", """
                 CREATE TABLE IF NOT EXISTS "EventAttendees" (
@@ -296,6 +316,13 @@ public static class SchemaMigrator
         {
             await conn.CloseAsync();
         }
+    }
+
+    private static async Task EnsurePostgresColumnAsync(System.Data.Common.DbConnection conn, string table, string column, string definition)
+    {
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = $"""ALTER TABLE "{table}" ADD COLUMN IF NOT EXISTS "{column}" {definition}""";
+        await cmd.ExecuteNonQueryAsync();
     }
 
     private static async Task EnsureColumnAsync(System.Data.Common.DbConnection conn, string table, string column, string definition)
