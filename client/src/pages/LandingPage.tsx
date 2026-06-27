@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
 
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
 import { api } from '../api'
 
 import type { HomePageData } from '../types'
+import { getAuthNav, type AuthMeResponse } from '../utils/authNav'
 
 import { FeatureExplorer } from '../components/FeatureExplorer'
+import { HeroProductShowcase } from '../components/HeroProductShowcase'
 import { LandingDemoPanel } from '../components/LandingDemoPanel'
 import { LandingMediaCard, padHomeItems, type LandingPreviewVariant } from '../components/LandingMediaCard'
 import type { FeaturePreviewKind } from '../components/FeatureExamplePreview'
@@ -336,9 +338,12 @@ function normalizeBrandColor(color: string, fallback: string) {
 
 export function LandingPage() {
 
+  const navigate = useNavigate()
   const [data, setData] = useState<HomePageData | null>(null)
 
   const [error, setError] = useState('')
+
+  const [auth, setAuth] = useState<AuthMeResponse | null>(null)
 
   const [demoPanelOpen, setDemoPanelOpen] = useState(false)
 
@@ -351,6 +356,12 @@ export function LandingPage() {
       .then(setData)
 
       .catch(() => setError('Unable to load page content.'))
+
+    api.me()
+
+      .then(setAuth)
+
+      .catch(() => setAuth({ authenticated: false }))
 
   }, [])
 
@@ -388,6 +399,26 @@ export function LandingPage() {
 
   const events = data?.events ?? []
 
+  const authNav = getAuthNav(auth)
+
+  const handleStartDemo = () => {
+    if (flows.length > 0) {
+      setDemoPanelOpen(true)
+      return
+    }
+    const demos = document.getElementById('demos')
+    if (demos) {
+      demos.scrollIntoView({ behavior: 'smooth' })
+      return
+    }
+    const eventsSection = document.getElementById('events')
+    if (eventsSection) {
+      eventsSection.scrollIntoView({ behavior: 'smooth' })
+      return
+    }
+    navigate(authNav.to)
+  }
+
 
 
   return (
@@ -418,7 +449,7 @@ export function LandingPage() {
 
             <a href="#pricing">Pricing</a>
 
-            <Link to="/admin/login" className="lp-nav-admin">Admin</Link>
+            <Link to={authNav.to} className="lp-nav-admin">{authNav.label}</Link>
 
           </nav>
 
@@ -448,45 +479,25 @@ export function LandingPage() {
 
               <div className="lp-hero-actions">
 
-                {flows.length > 0 ? (
+                <button
+                  type="button"
+                  className="lp-btn lp-btn-primary lp-btn-with-icon"
+                  onClick={handleStartDemo}
+                >
 
-                  <button
-                    type="button"
-                    className="lp-btn lp-btn-primary lp-btn-with-icon"
-                    onClick={() => setDemoPanelOpen(true)}
-                  >
+                  <PlayIcon />
 
-                    <PlayIcon />
+                  Start a demo
 
-                    Start a demo
-
-                  </button>
-
-                ) : (
-
-                  <Link to="/admin/login" className="lp-btn lp-btn-primary lp-btn-with-icon">
-
-                    <LoginIcon />
-
-                    Admin sign in
-
-                  </Link>
-
-                )}
-
-                {events.some(e => e.isLive) && (
-
-                  <Link to={events.find(e => e.isLive)!.url} className="lp-btn lp-btn-ghost lp-btn-with-icon">
-
-                    <LiveIcon />
-
-                    Join live event
-
-                  </Link>
-
-                )}
+                </button>
 
               </div>
+
+            </div>
+
+            <HeroProductShowcase />
+
+            <div className="lp-hero-inner">
 
               <ul className="lp-features">
 
@@ -670,15 +681,15 @@ export function LandingPage() {
 
               <p className="lp-section-sub">
 
-                No public demos are published yet. Administrators can create and enable flows in the admin panel.
+                No public demos are published yet. Sign in to create and enable flows in the admin panel.
 
               </p>
 
-              <Link to="/admin/login" className="lp-btn lp-btn-primary lp-btn-with-icon">
+              <Link to={authNav.to} className="lp-btn lp-btn-primary lp-btn-with-icon">
 
                 <LoginIcon />
 
-                Admin sign in
+                {authNav.label}
 
               </Link>
 
@@ -746,7 +757,7 @@ export function LandingPage() {
 
                   ) : (
 
-                    <Link to={tier.ctaTo} className={`lp-btn${tier.featured ? ' lp-btn-primary' : ' lp-btn-ghost'} lp-pricing-cta`}>
+                    <Link to={authNav.to} className={`lp-btn${tier.featured ? ' lp-btn-primary' : ' lp-btn-ghost'} lp-pricing-cta`}>
 
                       {tier.cta}
 
@@ -789,7 +800,7 @@ export function LandingPage() {
 
             <a href="#pricing">Pricing</a>
 
-            <Link to="/admin/login">Admin</Link>
+            <Link to={authNav.to}>{authNav.label}</Link>
 
           </div>
 

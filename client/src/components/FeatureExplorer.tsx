@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ComponentType, type CSSProperties } from 'react'
-import { CancelIcon } from './icons/uiIcons'
+import { CancelIcon, ChevronLeftIcon, ChevronRightIcon } from './icons/uiIcons'
 import { FeatureExamplePreview, type FeaturePreviewKind } from './FeatureExamplePreview'
 
 export type FeatureItem = {
@@ -28,6 +28,12 @@ export function FeatureExplorer({ features }: FeatureExplorerProps) {
     setActiveIndex(null)
     setFlipStyle({})
     setAnimating(false)
+  }, [])
+
+  const goToFeature = useCallback((index: number) => {
+    setFlipStyle({})
+    setAnimating(false)
+    setActiveIndex(index)
   }, [])
 
   const openFeature = useCallback((index: number) => {
@@ -69,11 +75,22 @@ export function FeatureExplorer({ features }: FeatureExplorerProps) {
     closeBtnRef.current?.focus()
 
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') close()
+      if (e.key === 'Escape') {
+        close()
+        return
+      }
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault()
+        goToFeature((activeIndex - 1 + features.length) % features.length)
+      }
+      if (e.key === 'ArrowRight') {
+        e.preventDefault()
+        goToFeature((activeIndex + 1) % features.length)
+      }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [activeIndex, close])
+  }, [activeIndex, close, goToFeature, features.length])
 
   const activeFeature = activeIndex !== null ? features[activeIndex] : null
 
@@ -106,41 +123,65 @@ export function FeatureExplorer({ features }: FeatureExplorerProps) {
       </div>
 
       {activeFeature && activeIndex !== null && (
-        <div
-          className={`lp-feature-expanded${animating ? ' is-animating' : ''}`}
-          style={Object.keys(flipStyle).length > 0 ? flipStyle : undefined}
-          onTransitionEnd={() => setAnimating(false)}
-        >
+        <>
           <button
-            ref={closeBtnRef}
             type="button"
-            className="lp-feature-expanded-close"
-            aria-label="Back to features"
-            onClick={close}
+            className="lp-feature-nav lp-feature-nav-prev"
+            aria-label="Previous feature"
+            onClick={() => goToFeature((activeIndex - 1 + features.length) % features.length)}
           >
-            <CancelIcon />
+            <ChevronLeftIcon />
           </button>
 
-          <div className="lp-feature-expanded-inner">
-            <div className="lp-feature-expanded-copy">
-              <div className="lp-feature-icon">
-                {(() => {
-                  const Icon = activeFeature.icon
-                  return <Icon />
-                })()}
-              </div>
-              <h3 className="lp-feature-expanded-title">{activeFeature.title}</h3>
-              <p className="lp-feature-expanded-desc">{activeFeature.description}</p>
-              <button type="button" className="lp-feature-expanded-back" onClick={close}>
-                Back to all features
-              </button>
-            </div>
+          <div
+            className={`lp-feature-expanded${animating ? ' is-animating' : ''}`}
+            style={Object.keys(flipStyle).length > 0 ? flipStyle : undefined}
+            onTransitionEnd={() => setAnimating(false)}
+          >
+            <button
+              ref={closeBtnRef}
+              type="button"
+              className="lp-feature-expanded-close"
+              aria-label="Back to features"
+              onClick={close}
+            >
+              <CancelIcon />
+            </button>
 
-            <div className="lp-feature-expanded-preview">
-              <FeatureExamplePreview kind={activeFeature.preview} title={activeFeature.title} />
+            <p className="lp-feature-nav-counter" aria-live="polite">
+              Feature {activeIndex + 1} of {features.length}
+            </p>
+
+            <div className="lp-feature-expanded-inner">
+              <div className="lp-feature-expanded-copy">
+                <div className="lp-feature-icon">
+                  {(() => {
+                    const Icon = activeFeature.icon
+                    return <Icon />
+                  })()}
+                </div>
+                <h3 className="lp-feature-expanded-title">{activeFeature.title}</h3>
+                <p className="lp-feature-expanded-desc">{activeFeature.description}</p>
+                <button type="button" className="lp-feature-expanded-back" onClick={close}>
+                  Back to all features
+                </button>
+              </div>
+
+              <div className="lp-feature-expanded-preview">
+                <FeatureExamplePreview kind={activeFeature.preview} title={activeFeature.title} />
+              </div>
             </div>
           </div>
-        </div>
+
+          <button
+            type="button"
+            className="lp-feature-nav lp-feature-nav-next"
+            aria-label="Next feature"
+            onClick={() => goToFeature((activeIndex + 1) % features.length)}
+          >
+            <ChevronRightIcon />
+          </button>
+        </>
       )}
     </div>
   )

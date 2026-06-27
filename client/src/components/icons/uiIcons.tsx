@@ -180,6 +180,22 @@ export function ArrowDownIcon() {
   )
 }
 
+export function ChevronLeftIcon() {
+  return (
+    <IconSvg>
+      <path d="M10 3L5 8l5 5" />
+    </IconSvg>
+  )
+}
+
+export function ChevronRightIcon() {
+  return (
+    <IconSvg>
+      <path d="M6 3l5 5-5 5" />
+    </IconSvg>
+  )
+}
+
 export function ExternalLinkIcon() {
   return (
     <IconSvg>

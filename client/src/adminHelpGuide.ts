@@ -35,7 +35,7 @@ export const HELP_SECTIONS: HelpSection[] = [
       'Configure global behaviour and branding under Settings before sharing demos publicly.',
     ],
     links: [
-      { label: 'Admin login', to: '/admin/login' },
+      { label: 'Login', to: '/admin/login' },
       { label: 'Flow Design', to: '/admin/flows' },
       { label: 'Settings', to: '/admin/settings' },
     ],

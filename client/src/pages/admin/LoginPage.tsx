@@ -3,17 +3,28 @@ import { useNavigate } from 'react-router-dom'
 import { api } from '../../api'
 import { applyAdminBrandingCss, useAdminBranding } from '../../hooks/useAdminBranding'
 import { LoginIcon } from '../../components/icons/uiIcons'
+import { getPostLoginPath } from '../../utils/authNav'
 
 export function LoginPage() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [checkingAuth, setCheckingAuth] = useState(true)
   const navigate = useNavigate()
   const branding = useAdminBranding()
 
   useEffect(() => {
     applyAdminBrandingCss(branding)
   }, [branding])
+
+  useEffect(() => {
+    api.me()
+      .then(res => {
+        if (res.authenticated) navigate(getPostLoginPath(res), { replace: true })
+      })
+      .catch(() => {})
+      .finally(() => setCheckingAuth(false))
+  }, [navigate])
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -25,6 +36,16 @@ export function LoginPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed')
     }
+  }
+
+  if (checkingAuth) {
+    return (
+      <div className="admin-login">
+        <div className="admin-login-card" style={{ textAlign: 'center', color: '#9b9d9f' }}>
+          Loading…
+        </div>
+      </div>
+    )
   }
 
   return (
