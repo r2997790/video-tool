@@ -122,24 +122,23 @@ export function FeatureExplorer({ features }: FeatureExplorerProps) {
           </button>
 
           <div className="lp-feature-expanded-inner">
-            <div className="lp-feature-expanded-head">
+            <div className="lp-feature-expanded-copy">
               <div className="lp-feature-icon">
                 {(() => {
                   const Icon = activeFeature.icon
                   return <Icon />
                 })()}
               </div>
-              <div>
-                <h3 className="lp-feature-expanded-title">{activeFeature.title}</h3>
-                <p className="lp-feature-expanded-desc">{activeFeature.description}</p>
-              </div>
+              <h3 className="lp-feature-expanded-title">{activeFeature.title}</h3>
+              <p className="lp-feature-expanded-desc">{activeFeature.description}</p>
+              <button type="button" className="lp-feature-expanded-back" onClick={close}>
+                Back to all features
+              </button>
             </div>
 
-            <FeatureExamplePreview kind={activeFeature.preview} title={activeFeature.title} />
-
-            <button type="button" className="lp-feature-expanded-back" onClick={close}>
-              Back to all features
-            </button>
+            <div className="lp-feature-expanded-preview">
+              <FeatureExamplePreview kind={activeFeature.preview} title={activeFeature.title} />
+            </div>
           </div>
         </div>
       )}
