@@ -9,6 +9,7 @@ import { getAuthNav, type AuthMeResponse } from '../utils/authNav'
 
 import { FeatureExplorer } from '../components/FeatureExplorer'
 import { HeroProductShowcase } from '../components/HeroProductShowcase'
+import { HeroValueRotator } from '../components/HeroValueRotator'
 import { LandingDemoPanel } from '../components/LandingDemoPanel'
 import { LandingMediaCard, padHomeItems, type LandingPreviewVariant } from '../components/LandingMediaCard'
 import type { FeaturePreviewKind } from '../components/FeatureExamplePreview'
@@ -497,19 +498,7 @@ export function LandingPage() {
 
             <HeroProductShowcase />
 
-            <div className="lp-hero-inner">
-
-              <ul className="lp-features">
-
-                <li>Chapter-based video walkthroughs</li>
-
-                <li>Live chat &amp; AI assistance</li>
-
-                <li>Scheduled broadcast events</li>
-
-              </ul>
-
-            </div>
+            <HeroValueRotator />
 
           </div>
 
