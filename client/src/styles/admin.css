@@ -1299,6 +1299,72 @@
   color: #77c043;
 }
 
+.flow-video-group {
+  width: 100%;
+  height: 100%;
+  border: 1px dashed #3d4450;
+  border-radius: 8px;
+  background: rgba(20, 22, 26, 0.5);
+  display: flex;
+  flex-direction: column;
+  pointer-events: none;
+  position: relative;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.flow-video-group.is-drop-target {
+  border-color: #77c043;
+  background: rgba(119, 192, 67, 0.08);
+}
+
+.flow-video-group-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #9ca3af;
+  border-bottom: 1px solid #2e3032;
+}
+
+.flow-video-group-icon {
+  color: #77c043;
+}
+
+.flow-video-group-title {
+  flex: 1;
+}
+
+.flow-video-group-sub {
+  font-size: 10px;
+  font-weight: 400;
+  color: #6b7280;
+}
+
+.flow-video-group-body {
+  flex: 1;
+  position: relative;
+  padding: 4px 8px;
+  font-size: 10px;
+  color: #6b7280;
+}
+
+.flow-video-insertion-line {
+  position: absolute;
+  top: 72px;
+  bottom: 36px;
+  width: 2px;
+  background: #f59e0b;
+  border-radius: 1px;
+  pointer-events: none;
+}
+
+.timeline-video-block {
+  margin-bottom: 4px;
+}
+
 .flow-node-palette-panel {
   margin: 12px;
   pointer-events: none;

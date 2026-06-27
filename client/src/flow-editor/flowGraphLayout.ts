@@ -3,6 +3,7 @@ import type { AdminChapter, AdminChapterVideo, FlowNode, FlowProject } from '../
 import { findVideoAncestor, isPlaybackTriggerNode, isVideoAttachType } from './flowRuntime'
 import {
   CHAPTER_NEST_TYPES,
+  collectVideoEvents,
   findChapterAncestor,
   parseChapterBlockForLayout,
   projectToTimeline,
@@ -18,6 +19,23 @@ export const CHAPTER_GROUP_MIN_HEIGHT = 160
 export const CHAPTER_GROUP_PADDING = 24
 export const NESTED_NODE_WIDTH = 200
 export const NESTED_NODE_HEIGHT = 72
+export const VIDEO_GROUP_PADDING = 8
+export const VIDEO_GROUP_HEADER_HEIGHT = 32
+export const VIDEO_EVENT_ROW_HEIGHT = 56
+
+export function videoGroupId(videoNodeId: string): string {
+  return `video-group:${videoNodeId}`
+}
+
+export function computeVideoGroupSize(eventCount: number): { width: number; height: number } {
+  const eventRowHeight = eventCount > 0 ? VIDEO_EVENT_ROW_HEIGHT : 0
+  const width = Math.max(
+    NESTED_NODE_WIDTH + VIDEO_GROUP_PADDING * 2,
+    VIDEO_GROUP_PADDING + 20 + Math.max(eventCount, 1) * 160,
+  )
+  const height = VIDEO_GROUP_HEADER_HEIGHT + VIDEO_GROUP_PADDING + NESTED_NODE_HEIGHT + 8 + eventRowHeight + VIDEO_DROP_STRIP_HEIGHT + VIDEO_GROUP_PADDING
+  return { width, height }
+}
 
 function findVideoParent(project: FlowProject, nodeId: string): FlowNode | null {
   const node = project.nodes.find(n => n.id === nodeId)
@@ -52,8 +70,7 @@ export function isFreePositionNode(project: FlowProject, nodeId: string): boolea
 
 function videoSegmentHeight(seg: ChapterSegment): number {
   if (seg.kind !== 'video') return NESTED_NODE_HEIGHT + 12
-  const nestHeight = NESTED_NODE_HEIGHT + 8 + (seg.events.length > 0 ? 56 : 0) + VIDEO_DROP_STRIP_HEIGHT + 8
-  return nestHeight + 8
+  return computeVideoGroupSize(seg.events.length).height + 8
 }
 
 export const VIDEO_DROP_STRIP_HEIGHT = 28
@@ -69,13 +86,13 @@ function resolveVideoNestHit(
   let childY = CHAPTER_GROUP_PADDING + 40
   for (const seg of segments) {
     if (seg.kind === 'video') {
-      const nestHeight = NESTED_NODE_HEIGHT + 8 + (seg.events.length > 0 ? 56 : 40) + VIDEO_DROP_STRIP_HEIGHT
+      const groupSize = computeVideoGroupSize(seg.events.length)
       const hitTop = childY - VIDEO_NEST_HIT_PADDING
-      const hitBottom = childY + nestHeight + VIDEO_NEST_HIT_PADDING
+      const hitBottom = childY + groupSize.height + VIDEO_NEST_HIT_PADDING
       if (localY >= hitTop && localY < hitBottom) {
         return seg.nodeId
       }
-      childY += nestHeight + 8
+      childY += groupSize.height + 8
     } else {
       childY += NESTED_NODE_HEIGHT + 12
     }
@@ -178,46 +195,71 @@ export function projectToGraph(
       const videoNode = project.nodes.find(n => n.id === seg.nodeId)
       if (!videoNode || placed.has(videoNode.id)) continue
       placed.add(videoNode.id)
+
+      const groupId = videoGroupId(videoNode.id)
+      const groupSize = computeVideoGroupSize(seg.events.length)
+      const videoCardY = VIDEO_GROUP_HEADER_HEIGHT + VIDEO_GROUP_PADDING
+      const eventRowY = videoCardY + NESTED_NODE_HEIGHT + 8
+
       nodes.push({
-        id: videoNode.id,
-        type: 'flowNode',
+        id: groupId,
+        type: 'videoGroup',
         parentId: chapterNode.id,
         extent: 'parent',
         position: { x: CHAPTER_GROUP_PADDING, y: childY },
+        style: { width: groupSize.width, height: groupSize.height },
+        data: {
+          videoNodeId: videoNode.id,
+          label: videoNode.name,
+          eventCount: seg.events.length,
+        },
+        draggable: false,
+        selectable: false,
+        connectable: false,
+      })
+
+      nodes.push({
+        id: videoNode.id,
+        type: 'flowNode',
+        parentId: groupId,
+        extent: 'parent',
+        position: { x: VIDEO_GROUP_PADDING, y: videoCardY },
         data: { label: videoNode.name, nodeType: videoNode.type, parameters: videoNode.parameters, raw: videoNode },
         draggable: true,
       })
-      childY += NESTED_NODE_HEIGHT + 8
 
-      let eventX = CHAPTER_GROUP_PADDING + 20
+      let eventX = 20
       for (const ev of seg.events) {
         if (placed.has(ev.id)) continue
         placed.add(ev.id)
         nodes.push({
           id: ev.id,
           type: 'flowNode',
-          parentId: chapterNode.id,
+          parentId: groupId,
           extent: 'parent',
-          position: { x: eventX, y: childY },
+          position: { x: eventX, y: eventRowY },
           data: { label: ev.name, nodeType: ev.type, parameters: ev.parameters, raw: ev },
           draggable: true,
         })
         eventX += 160
       }
-      if (seg.events.length > 0) childY += 56
 
       nodes.push({
         id: `video-drop:${videoNode.id}`,
         type: 'videoDropZone',
-        parentId: chapterNode.id,
+        parentId: groupId,
         extent: 'parent',
-        position: { x: CHAPTER_GROUP_PADDING, y: childY },
+        position: {
+          x: VIDEO_GROUP_PADDING,
+          y: groupSize.height - VIDEO_DROP_STRIP_HEIGHT - VIDEO_GROUP_PADDING,
+        },
         data: { videoNodeId: videoNode.id },
         draggable: false,
         selectable: false,
         connectable: false,
       })
-      childY += VIDEO_DROP_STRIP_HEIGHT + 8
+
+      childY += groupSize.height + 8
     }
   }
 
@@ -248,7 +290,7 @@ export function projectToGraph(
 export type DropTarget =
   | { scope: 'top' }
   | { scope: 'chapter'; chapterNodeId: string; afterSegmentIndex?: number }
-  | { scope: 'video'; videoNodeId: string }
+  | { scope: 'video'; videoNodeId: string; eventInsertIndex?: number }
 
 function canInsertAtTop(_nodeType: FlowNode['type']): boolean {
   return true
@@ -297,9 +339,9 @@ function resolveDropAtPosition(
 
   if (!insideChapter) {
     if (draggedNodeId) {
-      if (TOP_LEVEL_DRAG_TYPES.has(nodeType)) {
-        const currentChapter = findChapterAncestor(project, draggedNodeId)
-        if (currentChapter) return { scope: 'top' }
+      const currentChapter = findChapterAncestor(project, draggedNodeId)
+      if (currentChapter && (TOP_LEVEL_DRAG_TYPES.has(nodeType) || VIDEO_NEST_TYPES.has(nodeType))) {
+        return { scope: 'top' }
       }
     } else if (canInsertAtTop(nodeType)) {
       return { scope: 'top' }
@@ -309,10 +351,47 @@ function resolveDropAtPosition(
   return null
 }
 
+function computeEventInsertIndex(
+  flowPosition: { x: number; y: number },
+  videoGroupNode: Node,
+  graphNodes: Node[],
+): number | undefined {
+  const groupAbs = absoluteGraphPosition(videoGroupNode, graphNodes)
+  const localX = flowPosition.x - groupAbs.x
+  const eventNodes = graphNodes
+    .filter(n => n.parentId === videoGroupNode.id && n.type === 'flowNode' && n.id !== (videoGroupNode.data as { videoNodeId: string }).videoNodeId)
+    .sort((a, b) => a.position.x - b.position.x)
+
+  if (eventNodes.length === 0) return undefined
+
+  for (let i = 0; i < eventNodes.length; i++) {
+    const mid = eventNodes[i].position.x + NESTED_NODE_WIDTH / 2
+    if (localX < mid) return i
+  }
+  return eventNodes.length
+}
+
 export function resolveVideoDropTarget(
   flowPosition: { x: number; y: number },
   graphNodes: Node[],
 ): DropTarget | null {
+  for (const n of graphNodes) {
+    if (n.type !== 'videoGroup') continue
+    const abs = absoluteGraphPosition(n, graphNodes)
+    const w = (n.style?.width as number) ?? computeVideoGroupSize(0).width
+    const h = (n.style?.height as number) ?? computeVideoGroupSize(0).height
+    if (
+      flowPosition.x >= abs.x
+      && flowPosition.x <= abs.x + w
+      && flowPosition.y >= abs.y
+      && flowPosition.y <= abs.y + h
+    ) {
+      const videoNodeId = (n.data as { videoNodeId: string }).videoNodeId
+      const eventInsertIndex = computeEventInsertIndex(flowPosition, n, graphNodes)
+      return { scope: 'video', videoNodeId, eventInsertIndex }
+    }
+  }
+
   for (const n of graphNodes) {
     if (n.type !== 'videoDropZone') continue
     const abs = absoluteGraphPosition(n, graphNodes)
@@ -355,7 +434,7 @@ export function resolveDropTarget(
 ): DropTarget | null {
   const dragged = project.nodes.find(n => n.id === draggedNodeId)
   if (!dragged) return null
-  return resolveDropAtPosition(project, dragged.type, absolutePosition, graphNodes, chapterVideos, draggedNodeId)
+  return resolveCombinedDropTarget(project, absolutePosition, graphNodes, chapterVideos, draggedNodeId, dragged.type)
 }
 
 export function resolveInsertDropTarget(
@@ -366,7 +445,24 @@ export function resolveInsertDropTarget(
   _chapters: AdminChapter[],
   chapterVideos: AdminChapterVideo[],
 ): DropTarget | null {
-  return resolveDropAtPosition(project, nodeType, flowPosition, graphNodes, chapterVideos)
+  return resolveCombinedDropTarget(project, flowPosition, graphNodes, chapterVideos, undefined, nodeType)
+}
+
+export function resolveCombinedDropTarget(
+  project: FlowProject,
+  flowPosition: { x: number; y: number },
+  graphNodes: Node[],
+  chapterVideos: AdminChapterVideo[],
+  draggedNodeId?: string,
+  nodeType?: FlowNode['type'],
+): DropTarget | null {
+  const videoDrop = resolveVideoDropTarget(flowPosition, graphNodes)
+  if (videoDrop) return videoDrop
+
+  const type = nodeType ?? (draggedNodeId ? project.nodes.find(n => n.id === draggedNodeId)?.type : undefined)
+  if (!type) return null
+
+  return resolveDropAtPosition(project, type, flowPosition, graphNodes, chapterVideos, draggedNodeId)
 }
 
 export function dropTargetToInsertTarget(target: DropTarget): InsertTarget {
@@ -394,6 +490,26 @@ export function dropTargetToEdit(
 
   if (target.scope === 'video') {
     if (!isVideoAttachType(dragged.type)) return null
+
+    const currentVideo = findVideoAncestor(project, draggedNodeId)
+    if (currentVideo?.id === target.videoNodeId) {
+      const events = collectVideoEvents(project, target.videoNodeId)
+      const eventIds = events.map(e => e.id)
+      const currentIdx = eventIds.indexOf(draggedNodeId)
+      if (currentIdx >= 0 && eventIds.length > 1) {
+        let targetIdx = target.eventInsertIndex ?? currentIdx
+        targetIdx = Math.max(0, Math.min(targetIdx, eventIds.length))
+        if (targetIdx !== currentIdx && targetIdx !== currentIdx + 1) {
+          const reordered = [...eventIds]
+          reordered.splice(currentIdx, 1)
+          const insertAt = targetIdx > currentIdx ? targetIdx - 1 : targetIdx
+          reordered.splice(insertAt, 0, draggedNodeId)
+          return { type: 'reorderEvents', videoNodeId: target.videoNodeId, orderedIds: reordered }
+        }
+        return null
+      }
+    }
+
     return { type: 'moveNodeToVideo', nodeId: draggedNodeId, videoNodeId: target.videoNodeId }
   }
 
@@ -406,7 +522,23 @@ export function dropTargetToEdit(
       const block = parseChapterBlockForLayout(project, chapterNode, chapterVideos)
       const segmentIds = block.segments.map(segmentNodeId)
       const currentIdx = segmentIds.indexOf(draggedNodeId)
-      if (currentIdx < 0) return null
+      if (currentIdx < 0) {
+        const videoAncestor = findVideoAncestor(project, draggedNodeId)
+        if (videoAncestor && isVideoAttachType(dragged.type)) {
+          let afterVideoNodeId: string | undefined
+          if (target.afterSegmentIndex != null) {
+            const seg = block.segments[target.afterSegmentIndex]
+            if (seg?.kind === 'video') afterVideoNodeId = seg.nodeId
+          }
+          return {
+            type: 'moveIntoChapter',
+            nodeId: draggedNodeId,
+            chapterNodeId: target.chapterNodeId,
+            afterVideoNodeId,
+          }
+        }
+        return null
+      }
 
       let targetIdx: number
       if (target.afterSegmentIndex != null) {

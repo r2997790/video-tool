@@ -21,15 +21,16 @@ import '@xyflow/react/dist/style.css'
 import type { FlowNode, FlowProject } from '../types'
 import { FLOW_NODE_COLORS } from './flowNodeColors'
 import { canConnect } from './flowSchema'
-import { buildClipboard, pasteClipboard, type FlowClipboardPayload } from './flowClipboard'
 import {
   dropTargetToEdit,
   dropTargetToInsertTarget,
   isFreePositionNode,
   projectToGraph,
-  resolveDropTarget,
-  resolveInsertDropTarget,
-  resolveVideoDropTarget,
+  resolveCombinedDropTarget,
+  VIDEO_GROUP_HEADER_HEIGHT,
+  NESTED_NODE_HEIGHT,
+  VIDEO_GROUP_PADDING,
+  type DropTarget,
 } from './flowGraphLayout'
 import { VIDEO_ATTACH_NO_VIDEO_MESSAGE } from './flowTimeline'
 import { insertNodeAtTarget } from './flowInsert'
@@ -72,6 +73,40 @@ function VideoDropZoneNode({ data }: { data: { videoNodeId: string; isDropHover?
   )
 }
 
+function VideoGroupNode({
+  data,
+}: {
+  data: {
+    label: string
+    videoSubtitle?: string
+    videoNodeId: string
+    isDropTarget?: boolean
+    eventInsertIndex?: number | null
+  }
+}) {
+  return (
+    <div className={`flow-video-group${data.isDropTarget ? ' is-drop-target' : ''}`}>
+      <div className="flow-video-group-header">
+        <span className="flow-video-group-icon">▶</span>
+        <span className="flow-video-group-title">{data.label}</span>
+        {data.videoSubtitle && <span className="flow-video-group-sub">{data.videoSubtitle}</span>}
+      </div>
+      <div className="flow-video-group-body">
+        {data.isDropTarget && data.eventInsertIndex != null && (
+          <div
+            className="flow-video-insertion-line"
+            style={{
+              left: `${20 + data.eventInsertIndex * 160}px`,
+              top: `${VIDEO_GROUP_HEADER_HEIGHT + VIDEO_GROUP_PADDING + NESTED_NODE_HEIGHT + 8}px`,
+            }}
+          />
+        )}
+        Drop pause / toaster / AI chat here
+      </div>
+    </div>
+  )
+}
+
 function ChapterGroupNode({
   data,
   selected,
@@ -105,7 +140,7 @@ function ChapterGroupNode({
   )
 }
 
-const nodeTypes = { flowNode: FlowNodeCard, chapterGroup: ChapterGroupNode, videoDropZone: VideoDropZoneNode }
+const nodeTypes = { flowNode: FlowNodeCard, chapterGroup: ChapterGroupNode, videoDropZone: VideoDropZoneNode, videoGroup: VideoGroupNode }
 
 function toReactFlowEdges(connections: FlowProject['connections']): Edge[] {
   return connections.map((c, i) => ({
@@ -157,8 +192,6 @@ function VisualFlowEditorCanvas({ state }: VisualFlowEditorProps) {
     chapterVideos,
     selectNode,
     selectEdge,
-    selectedNodeId,
-    selectedNodeIds,
     setSelectedNodeIds,
     selectedEdge,
     layoutFitToken,
@@ -169,10 +202,10 @@ function VisualFlowEditorCanvas({ state }: VisualFlowEditorProps) {
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
   const [dragOverChapterId, setDragOverChapterId] = useState<string | null>(null)
   const [dragOverVideoId, setDragOverVideoId] = useState<string | null>(null)
+  const [eventInsertIndex, setEventInsertIndex] = useState<number | null>(null)
   const [insertionIndex, setInsertionIndex] = useState<number | null>(null)
   const [a11yMessage, setA11yMessage] = useState('')
   const canvasRef = useRef<HTMLDivElement>(null)
-  const clipboardRef = useRef<FlowClipboardPayload | null>(null)
   const syncingRef = useRef(false)
   const nodesRef = useRef<Node[]>([])
   const fitViewOnceRef = useRef(false)
@@ -212,6 +245,23 @@ function VisualFlowEditorCanvas({ state }: VisualFlowEditorProps) {
           },
         }
       }
+      if (n.type === 'videoGroup') {
+        const videoNodeId = (n.data as { videoNodeId: string }).videoNodeId
+        const videoNode = project.nodes.find(x => x.id === videoNodeId)
+        const videoId = videoNode?.parameters.videoId as number | undefined
+        const v = chapterVideos.find(x => x.id === videoId)
+        const videoSubtitle = v ? `${v.title}${v.duration ? ` · ${v.duration}` : ''}` : videoId ? `Video #${videoId}` : undefined
+        return {
+          ...n,
+          data: {
+            ...n.data,
+            label: videoNode?.name ?? (n.data as { label: string }).label,
+            videoSubtitle,
+            isDropTarget: videoNodeId === dragOverVideoId,
+            eventInsertIndex: videoNodeId === dragOverVideoId ? eventInsertIndex : null,
+          },
+        }
+      }
       if (nodeType === 'video') {
         const videoId = params.videoId as number | undefined
         const v = chapterVideos.find(x => x.id === videoId)
@@ -227,7 +277,7 @@ function VisualFlowEditorCanvas({ state }: VisualFlowEditorProps) {
       }
       return n
     })
-  }, [project, chapters, chapterVideos, dragOverChapterId, dragOverVideoId, insertionIndex])
+  }, [project, chapters, chapterVideos, dragOverChapterId, dragOverVideoId, insertionIndex, eventInsertIndex])
 
   useEffect(() => {
     if (layoutFitToken === 0 || layoutFitToken === lastLayoutFitRef.current) return
@@ -283,36 +333,40 @@ function VisualFlowEditorCanvas({ state }: VisualFlowEditorProps) {
     }
   }, [onEdgesChange, edges, applyEdit, selectedEdge, selectEdge])
 
-  const updateDragTarget = useCallback((target: ReturnType<typeof resolveDropTarget>) => {
+  const updateDragTarget = useCallback((target: DropTarget | null) => {
     if (target?.scope === 'video') {
       setDragOverVideoId(target.videoNodeId)
       setDragOverChapterId(null)
       setInsertionIndex(null)
+      setEventInsertIndex(target.eventInsertIndex ?? null)
     } else if (target?.scope === 'chapter') {
       setDragOverChapterId(target.chapterNodeId)
       setDragOverVideoId(null)
       setInsertionIndex(target.afterSegmentIndex ?? 0)
+      setEventInsertIndex(null)
     } else {
       setDragOverChapterId(null)
       setDragOverVideoId(null)
       setInsertionIndex(null)
+      setEventInsertIndex(null)
     }
   }, [])
 
   const onNodeDrag = useCallback((_: unknown, node: Node) => {
     const abs = absolutePosition(node, nodesRef.current)
-    const target = resolveDropTarget(project, node.id, abs, nodesRef.current, chapters, chapterVideos)
+    const target = resolveCombinedDropTarget(project, abs, nodesRef.current, chapterVideos, node.id)
     updateDragTarget(target)
-  }, [project, chapters, chapterVideos, updateDragTarget])
+  }, [project, chapterVideos, updateDragTarget])
 
   const onNodeDragStop = useCallback((_: unknown, node: Node) => {
     setDragOverChapterId(null)
     setDragOverVideoId(null)
     setInsertionIndex(null)
+    setEventInsertIndex(null)
     if (syncingRef.current) return
 
     const abs = absolutePosition(node, nodesRef.current)
-    const dropTarget = resolveDropTarget(project, node.id, abs, nodesRef.current, chapters, chapterVideos)
+    const dropTarget = resolveCombinedDropTarget(project, abs, nodesRef.current, chapterVideos, node.id)
     const structuralEdit = dropTarget ? dropTargetToEdit(node.id, dropTarget, project, chapterVideos) : null
 
     if (structuralEdit) {
@@ -338,44 +392,37 @@ function VisualFlowEditorCanvas({ state }: VisualFlowEditorProps) {
     const nodeType = paletteDragTypeRef.current ?? getPaletteDragType(e.dataTransfer)
     if (nodeType) {
       const flowPosition = screenToFlowPosition({ x: e.clientX, y: e.clientY })
-      const videoDrop = resolveVideoDropTarget(flowPosition, nodesRef.current)
-      if (videoDrop?.scope === 'video') {
-        setDragOverVideoId(videoDrop.videoNodeId)
-        setDragOverChapterId(null)
-        setInsertionIndex(null)
-        return
-      }
-      const dropTarget = resolveInsertDropTarget(
+      const dropTarget = resolveCombinedDropTarget(
         project,
         flowPosition,
-        nodeType,
         nodesRef.current,
-        chapters,
         chapterVideos,
+        undefined,
+        nodeType,
       )
       updateDragTarget(dropTarget)
     }
-  }, [project, chapters, chapterVideos, screenToFlowPosition, updateDragTarget])
+  }, [project, chapterVideos, screenToFlowPosition, updateDragTarget])
 
   const onDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     setDragOverChapterId(null)
     setDragOverVideoId(null)
     setInsertionIndex(null)
+    setEventInsertIndex(null)
 
     const nodeType = paletteDragTypeRef.current ?? getPaletteDragType(e.dataTransfer)
     paletteDragTypeRef.current = null
     if (!nodeType) return
 
     const flowPosition = screenToFlowPosition({ x: e.clientX, y: e.clientY })
-    const videoDrop = resolveVideoDropTarget(flowPosition, nodesRef.current)
-    const dropTarget = videoDrop ?? resolveInsertDropTarget(
+    const dropTarget = resolveCombinedDropTarget(
       project,
       flowPosition,
-      nodeType,
       nodesRef.current,
-      chapters,
       chapterVideos,
+      undefined,
+      nodeType,
     )
 
     if (!dropTarget) {
@@ -407,6 +454,7 @@ function VisualFlowEditorCanvas({ state }: VisualFlowEditorProps) {
   const onSelectionChange = useCallback(({ nodes: selNodes, edges: selEdges }: OnSelectionChangeParams) => {
     const ids = selNodes.map(n => n.id)
     setSelectedNodeIds(ids)
+    canvasRef.current?.focus()
     if (selNodes.length === 1) {
       selectNode(nodeFromCanvas(selNodes[0]))
       selectEdge(null)
@@ -424,58 +472,6 @@ function VisualFlowEditorCanvas({ state }: VisualFlowEditorProps) {
       selectEdge(null)
     }
   }, [selectNode, selectEdge, setSelectedNodeIds])
-
-  useEffect(() => {
-    const el = canvasRef.current
-    if (!el) return
-    const onKeyDown = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement).tagName
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
-
-      const mod = e.ctrlKey || e.metaKey
-      if (!mod && (e.key === 'Delete' || e.key === 'Backspace') && selectedEdge) {
-        e.preventDefault()
-        applyEdit({ type: 'disconnectEdge', from: selectedEdge.from, to: selectedEdge.to })
-        selectEdge(null)
-        setA11yMessage('Connection removed')
-        return
-      }
-      if (mod && e.key.toLowerCase() === 'c') {
-        const ids = selectedNodeIds.length ? selectedNodeIds : selectedNodeId ? [selectedNodeId] : []
-        const clip = buildClipboard(nodes, edges, ids)
-        if (clip) {
-          clipboardRef.current = clip
-          e.preventDefault()
-          setA11yMessage(`Copied ${clip.nodes.length} node${clip.nodes.length === 1 ? '' : 's'}`)
-        }
-      }
-      if (mod && e.key.toLowerCase() === 'v') {
-        const clip = clipboardRef.current
-        if (clip) {
-          e.preventDefault()
-          toast.toast('Paste adds nodes at default positions — adjust in timeline or drag into chapters.')
-          const { nodes: pasted, edges: pastedEdges } = pasteClipboard(clip, (flowNodes: FlowNode[]) =>
-            flowNodes.map((n, i) => ({
-              id: n.id,
-              type: 'flowNode',
-              position: { x: 80 + (i % 4) * 220, y: 80 + Math.floor(i / 4) * 140 },
-              data: { label: n.name, nodeType: n.type, parameters: n.parameters, raw: n },
-            })),
-          )
-          for (const n of pasted) {
-            const raw = (n.data as { raw?: FlowNode }).raw
-            if (raw) applyEdit({ type: 'insert', node: raw, target: { scope: 'top' } })
-          }
-          for (const e of pastedEdges) {
-            applyEdit({ type: 'connectNodes', from: e.source, to: e.target })
-          }
-          setA11yMessage(`Pasted ${pasted.length} node${pasted.length === 1 ? '' : 's'}`)
-        }
-      }
-    }
-    el.addEventListener('keydown', onKeyDown)
-    return () => el.removeEventListener('keydown', onKeyDown)
-  }, [nodes, edges, selectedNodeIds, selectedNodeId, selectedEdge, applyEdit, selectEdge, toast])
 
   const onReconnect = useCallback((oldEdge: Edge, newConnection: Connection) => {
     if (!newConnection.source || !newConnection.target) return
@@ -544,7 +540,7 @@ function VisualFlowEditorCanvas({ state }: VisualFlowEditorProps) {
           onNodeDragStop={onNodeDragStop}
           onDragOver={onDragOver}
           onDrop={onDrop}
-          onPaneClick={() => { selectEdge(null) }}
+          onPaneClick={() => { selectEdge(null); canvasRef.current?.focus() }}
           onInit={onInit}
           selectionOnDrag
           panOnDrag={[1, 2]}

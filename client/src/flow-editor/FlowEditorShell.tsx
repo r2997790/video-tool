@@ -7,6 +7,7 @@ import { FlowNodePropertyPanel } from './FlowNodePropertyPanel'
 import { useFlowEditorState } from './useFlowEditorState'
 import { collectFlowFieldIds } from './flowRuntime'
 import { findChapterAncestor } from './flowTimeline'
+import { getSelectedNodeIds, handleFlowEditorKeyDown } from './flowEditorKeyboard'
 import { ConfirmModal } from '../components/ConfirmModal'
 import { useToast } from '../components/Toast'
 import type { FlowNode } from '../types'
@@ -75,11 +76,7 @@ export function FlowEditorShell({ flowSlug }: FlowEditorShellProps) {
   }, [state, toast])
 
   const handleDeleteSelection = useCallback(() => {
-    const ids = selectedNodeIds.length
-      ? selectedNodeIds
-      : selectedNodeId
-        ? [selectedNodeId]
-        : []
+    const ids = getSelectedNodeIds(project, selectedNodeIds, selectedNodeId)
     if (ids.length > 0) {
       applyEdit({ type: 'removeNodes', nodeIds: ids })
       selectNode(null)
@@ -90,7 +87,7 @@ export function FlowEditorShell({ flowSlug }: FlowEditorShellProps) {
       applyEdit({ type: 'disconnectEdge', from: selectedEdge.from, to: selectedEdge.to })
       selectEdge(null)
     }
-  }, [selectedNodeIds, selectedNodeId, selectedEdge, applyEdit, selectNode, selectEdge, setSelectedNodeIds])
+  }, [project, selectedNodeIds, selectedNodeId, selectedEdge, applyEdit, selectNode, selectEdge, setSelectedNodeIds])
 
   const handleBreakLink = useCallback(() => {
     if (!selectedEdge) return
@@ -140,6 +137,28 @@ export function FlowEditorShell({ flowSlug }: FlowEditorShellProps) {
     selectEdge(null)
   }
 
+  const handleEditorKeyDown = useCallback((e: React.KeyboardEvent) => {
+    handleFlowEditorKeyDown(e.nativeEvent, {
+      project,
+      selectedNodeIds,
+      selectedNodeId,
+      selectedEdge,
+      applyEdit,
+      onDeleteSelection: handleDeleteSelection,
+      selectNode,
+      setSelectedNodeIds,
+    })
+  }, [
+    project,
+    selectedNodeIds,
+    selectedNodeId,
+    selectedEdge,
+    applyEdit,
+    handleDeleteSelection,
+    selectNode,
+    setSelectedNodeIds,
+  ])
+
   const fieldIds = collectFlowFieldIds(project)
   const questionTargets = project.nodes
     .filter(n => n.type === 'question')
@@ -165,7 +184,7 @@ export function FlowEditorShell({ flowSlug }: FlowEditorShellProps) {
   const panelOpen = !!selectedNode
 
   return (
-    <div className="flow-editor-wrap">
+    <div className="flow-editor-wrap" onKeyDown={handleEditorKeyDown}>
       <FlowEditorToolbar
         state={state}
         onSave={handleSave}

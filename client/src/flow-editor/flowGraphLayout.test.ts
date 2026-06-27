@@ -6,6 +6,10 @@ import {
   projectToGraph,
   resolveInsertDropTarget,
   resolveVideoDropTarget,
+  videoGroupId,
+  VIDEO_GROUP_HEADER_HEIGHT,
+  VIDEO_GROUP_PADDING,
+  NESTED_NODE_HEIGHT,
 } from './flowGraphLayout'
 import { newNode } from './flowSchema'
 import { projectToTimeline } from './flowTimeline'
@@ -37,6 +41,18 @@ function buildChapterFlow(): FlowProject {
       { from: video.id, to: q1.id },
       { from: q1.id, to: q2.id },
     ],
+  }
+}
+
+function buildVideoOnlyFlow(): FlowProject {
+  const chapter = newNode('chapter', 'Chapter block')
+  chapter.parameters = { chapterId: 1 }
+  const video = newNode('video', 'Video 1')
+  video.parameters = { chapterId: 1, videoId: 1 }
+  return {
+    projectName: 'Test',
+    nodes: [chapter, video],
+    connections: [{ from: chapter.id, to: video.id }],
   }
 }
 
@@ -208,18 +224,120 @@ describe('flowGraphLayout', () => {
     expect(target).toEqual({ scope: 'top' })
   })
 
-  it('resolveVideoDropTarget hits video drop strip nodes', () => {
+  it('projectToGraph emits videoGroup with nested video and events', () => {
+    let project = buildChapterFlow()
+    const video = project.nodes.find(n => n.type === 'video')!
+    const pause = newNode('pause', 'During pause')
+    project = {
+      ...project,
+      nodes: [...project.nodes, pause],
+      connections: [...project.connections, { from: video.id, to: pause.id }],
+    }
+    const graph = projectToGraph(project, ctx.chapters, ctx.chapterVideos)
+    const group = graph.find(n => n.id === videoGroupId(video.id))
+    const videoNode = graph.find(n => n.id === video.id)
+    const pauseNode = graph.find(n => n.id === pause.id)
+
+    expect(group?.type).toBe('videoGroup')
+    expect(videoNode?.parentId).toBe(group?.id)
+    expect(pauseNode?.parentId).toBe(group?.id)
+    expect(pauseNode?.position.y).toBe(VIDEO_GROUP_HEADER_HEIGHT + VIDEO_GROUP_PADDING + NESTED_NODE_HEIGHT + 8)
+  })
+
+  it('resolveInsertDropTarget returns video scope when dropped on video group bounds', () => {
     const project = buildChapterFlow()
     const graph = projectToGraph(project, ctx.chapters, ctx.chapterVideos)
+    const chapter = project.nodes.find(n => n.type === 'chapter')!
     const video = project.nodes.find(n => n.type === 'video')!
-    const dropNode = graph.find(n => n.id === `video-drop:${video.id}`)!
-    const chapterGroup = graph.find(n => n.id === project.nodes.find(n => n.type === 'chapter')!.id)!
+    const group = graph.find(n => n.id === videoGroupId(video.id))!
+    const chapterGroup = graph.find(n => n.id === chapter.id)!
 
-    const absX = chapterGroup!.position.x + dropNode.position.x + 10
-    const absY = chapterGroup!.position.y + dropNode.position.y + 10
+    const target = resolveInsertDropTarget(
+      project,
+      {
+        x: chapterGroup!.position.x + group.position.x + 40,
+        y: chapterGroup!.position.y + group.position.y + 40,
+      },
+      'pause',
+      graph,
+      ctx.chapters,
+      ctx.chapterVideos,
+    )
 
-    const target = resolveVideoDropTarget({ x: absX, y: absY }, graph)
-    expect(target).toEqual({ scope: 'video', videoNodeId: video.id })
+    expect(target).toEqual({ scope: 'video', videoNodeId: video.id, eventInsertIndex: undefined })
+  })
+
+  it('resolveVideoDropTarget hits video group bounds', () => {
+    const project = buildChapterFlow()
+    const graph = projectToGraph(project, ctx.chapters, ctx.chapterVideos)
+    const chapter = project.nodes.find(n => n.type === 'chapter')!
+    const video = project.nodes.find(n => n.type === 'video')!
+    const group = graph.find(n => n.id === videoGroupId(video.id))!
+    const chapterGroup = graph.find(n => n.id === chapter.id)!
+
+    const target = resolveVideoDropTarget(
+      {
+        x: chapterGroup!.position.x + group.position.x + 20,
+        y: chapterGroup!.position.y + group.position.y + 50,
+      },
+      graph,
+    )
+    expect(target?.scope).toBe('video')
+    expect(target?.scope === 'video' && target.videoNodeId).toBe(video.id)
+  })
+
+  it('dropTargetToEdit reorders events within same video', async () => {
+    const { applyFlowEdit } = await import('./applyFlowEdit')
+    let project = buildVideoOnlyFlow()
+    const video = project.nodes.find(n => n.type === 'video')!
+    const pause1 = newNode('pause', 'Pause A')
+    const pause2 = newNode('pause', 'Pause B')
+    project = applyFlowEdit(project, { type: 'insert', node: pause1, target: { scope: 'video', videoNodeId: video.id } }, ctx)
+    project = applyFlowEdit(project, { type: 'insert', node: pause2, target: { scope: 'video', videoNodeId: video.id } }, ctx)
+
+    const edit = dropTargetToEdit(pause2.id, {
+      scope: 'video',
+      videoNodeId: video.id,
+      eventInsertIndex: 0,
+    }, project, ctx.chapterVideos)
+
+    expect(edit?.type).toBe('reorderEvents')
+    if (edit?.type === 'reorderEvents') {
+      expect(edit.orderedIds).toEqual([pause2.id, pause1.id])
+    }
+  })
+
+  it('dropTargetToEdit moves during-video pause to chapter spine', async () => {
+    const { applyFlowEdit } = await import('./applyFlowEdit')
+    let project = buildVideoOnlyFlow()
+    const chapter = project.nodes.find(n => n.type === 'chapter')!
+    const video = project.nodes.find(n => n.type === 'video')!
+    const pause = newNode('pause', 'During pause')
+    project = applyFlowEdit(project, { type: 'insert', node: pause, target: { scope: 'video', videoNodeId: video.id } }, ctx)
+
+    const edit = dropTargetToEdit(pause.id, {
+      scope: 'chapter',
+      chapterNodeId: chapter.id,
+      afterSegmentIndex: 0,
+    }, project, ctx.chapterVideos)
+
+    expect(edit).toEqual({
+      type: 'moveIntoChapter',
+      nodeId: pause.id,
+      chapterNodeId: chapter.id,
+      afterVideoNodeId: video.id,
+    })
+  })
+
+  it('dropTargetToEdit moves during-video pause to top level', async () => {
+    const { applyFlowEdit } = await import('./applyFlowEdit')
+    let project = buildVideoOnlyFlow()
+    const video = project.nodes.find(n => n.type === 'video')!
+    const pause = newNode('pause', 'During pause')
+    project = applyFlowEdit(project, { type: 'insert', node: pause, target: { scope: 'video', videoNodeId: video.id } }, ctx)
+
+    const edit = dropTargetToEdit(pause.id, { scope: 'top' }, project, ctx.chapterVideos)
+    expect(edit).toEqual({ type: 'moveToTopLevel', nodeId: pause.id })
   })
 })
 

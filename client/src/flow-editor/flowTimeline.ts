@@ -47,7 +47,7 @@ export const VIDEO_ATTACH_NO_VIDEO_MESSAGE =
 export const CHAPTER_NEST_TYPES = new Set<FlowNode['type']>([...CHAPTER_INTERSTITIAL_TYPES, 'video'])
 
 /** Types that can be dragged out of a chapter to the top level. */
-export const TOP_LEVEL_DRAG_TYPES = new Set<FlowNode['type']>([...TOP_LEVEL_STEP_TYPES, 'video'])
+export const TOP_LEVEL_DRAG_TYPES = new Set<FlowNode['type']>([...TOP_LEVEL_STEP_TYPES, 'video', 'pause', 'toaster'])
 
 const CHAPTER_INTERSTITIAL = CHAPTER_INTERSTITIAL_TYPES
 const TOP_LEVEL_STEP = TOP_LEVEL_STEP_TYPES
@@ -813,6 +813,10 @@ export type TimelineEdit =
 
 export function canNestInChapter(node: FlowNode): boolean {
   return isChapterInterstitial(node) || node.type === 'video'
+}
+
+export function canNestInVideo(node: FlowNode): boolean {
+  return isVideoAttachType(node.type)
 }
 
 function timelineNodeOrder(project: FlowProject, chapters: AdminChapter[], videos: AdminChapterVideo[]): string[] {

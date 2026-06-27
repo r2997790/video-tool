@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import {
   DndContext,
   DragOverlay,
@@ -19,10 +19,10 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import type { FlowNode } from '../types'
 import { canConnect } from './flowSchema'
-import { isVideoAttachType } from './flowRuntime'
 import {
   applyTimelineEdit,
   canNestInChapter,
+  canNestInVideo,
   chapterLabel,
   nodeSummary,
   projectToTimeline,
@@ -55,10 +55,12 @@ function DropZone({
   id,
   label,
   className = '',
+  children,
 }: {
   id: string
   label: string
   className?: string
+  children?: React.ReactNode
 }) {
   const { setNodeRef, isOver } = useDroppable({ id })
   return (
@@ -67,6 +69,7 @@ function DropZone({
       className={`timeline-drop-zone${isOver ? ' is-over' : ''} ${className}`.trim()}
     >
       {label}
+      {children}
     </div>
   )
 }
@@ -172,6 +175,12 @@ function StepRow({
 export function TimelineEditor({ state }: TimelineEditorProps) {
   const { project, chapters, chapterVideos, selectedNodeId, selectNode } = state
   const [activeDragId, setActiveDragId] = useState<string | null>(null)
+  const timelineRef = useRef<HTMLDivElement>(null)
+
+  const selectNodeAndFocus = useCallback((node: FlowNode | null) => {
+    selectNode(node)
+    timelineRef.current?.focus()
+  }, [selectNode])
 
   const timeline = useMemo(
     () => projectToTimeline(project, chapters, chapterVideos),
@@ -188,8 +197,8 @@ export function TimelineEditor({ state }: TimelineEditorProps) {
 
   const deleteNode = useCallback((nodeId: string) => {
     applyEdit({ type: 'remove', nodeId })
-    if (selectedNodeId === nodeId) selectNode(null)
-  }, [applyEdit, selectedNodeId, selectNode])
+    if (selectedNodeId === nodeId) selectNodeAndFocus(null)
+  }, [applyEdit, selectedNodeId, selectNodeAndFocus])
 
   const onDragStart = (event: DragStartEvent) => {
     setActiveDragId(String(event.active.id))
@@ -207,12 +216,19 @@ export function TimelineEditor({ state }: TimelineEditorProps) {
 
     const draggedNode = project.nodes.find(n => n.id === activeNodeId)
 
-    // Drop on video nest zone
+    // Drop on video nest zone (includes event list)
     if (overId.startsWith('video-nest:')) {
       const videoNodeId = overId.replace('video-nest:', '')
-      if (draggedNode && isVideoAttachType(draggedNode.type)) {
+      if (draggedNode && canNestInVideo(draggedNode) && canDropNodeType(draggedNode.type, 'video')) {
         applyEdit({ type: 'moveNodeToVideo', nodeId: activeNodeId, videoNodeId })
       }
+      return
+    }
+
+    // Drop on video header — nest attach types; video reorder handled below
+    if (overId.startsWith('video:') && draggedNode && canNestInVideo(draggedNode) && draggedNode.type !== 'video') {
+      const videoNodeId = overId.replace('video:', '')
+      applyEdit({ type: 'moveNodeToVideo', nodeId: activeNodeId, videoNodeId })
       return
     }
 
@@ -320,7 +336,7 @@ export function TimelineEditor({ state }: TimelineEditorProps) {
           id={rowKey(row)}
           className={`timeline-chapter-header${chapterSelected ? ' is-selected' : ''}`}
         >
-          <div className="timeline-row-body" onClick={() => chapterNode && selectNode(chapterNode)}>
+          <div className="timeline-row-body" onClick={() => chapterNode && selectNodeAndFocus(chapterNode)}>
             <span className="timeline-chapter-icon">▣</span>
             <span className="timeline-chapter-title">Chapter: {chName}</span>
             {chapterNode && (
@@ -347,7 +363,7 @@ export function TimelineEditor({ state }: TimelineEditorProps) {
                         key={seg.node.id}
                         node={seg.node}
                         selected={selectedNodeId === seg.node.id}
-                        onSelect={() => selectNode(seg.node)}
+                        onSelect={() => selectNodeAndFocus(seg.node)}
                         onDelete={() => deleteNode(seg.node.id)}
                         sortableId={segmentSortableId(seg)}
                       />
@@ -360,12 +376,12 @@ export function TimelineEditor({ state }: TimelineEditorProps) {
                   const nextSeg = row.segments[segIdx + 1]
 
                   return (
-                    <div key={seg.nodeId}>
+                    <div key={seg.nodeId} className="timeline-video-block">
                       <SortableRowShell
                         id={`video:${seg.nodeId}`}
                         className={`timeline-video-header${selectedNodeId === seg.nodeId ? ' is-selected' : ''}`}
                       >
-                        <div className="timeline-row-body" onClick={() => videoNode && selectNode(videoNode)}>
+                        <div className="timeline-row-body" onClick={() => videoNode && selectNodeAndFocus(videoNode)}>
                           <span className="timeline-video-icon">▶</span>
                           <span>Video: {vLabel}</span>
                           {videoNode && (
@@ -379,20 +395,21 @@ export function TimelineEditor({ state }: TimelineEditorProps) {
                         id={`video-nest:${seg.nodeId}`}
                         label={seg.events.length === 0 ? 'Drop pause & ask / question / toaster / AI chat here' : 'Drop during-video event here'}
                         className="timeline-nested-events"
-                      />
-                      <SortableContext items={eventIds} strategy={verticalListSortingStrategy}>
-                        <div className="timeline-nested-events-list">
-                          {seg.events.map(ev => (
-                            <SortableEventRow
-                              key={ev.id}
-                              node={ev}
-                              selected={selectedNodeId === ev.id}
-                              onSelect={() => selectNode(ev)}
-                              onDelete={() => deleteNode(ev.id)}
-                            />
-                          ))}
-                        </div>
-                      </SortableContext>
+                      >
+                        <SortableContext items={eventIds} strategy={verticalListSortingStrategy}>
+                          <div className="timeline-nested-events-list">
+                            {seg.events.map(ev => (
+                              <SortableEventRow
+                                key={ev.id}
+                                node={ev}
+                                selected={selectedNodeId === ev.id}
+                                onSelect={() => selectNodeAndFocus(ev)}
+                                onDelete={() => deleteNode(ev.id)}
+                              />
+                            ))}
+                          </div>
+                        </SortableContext>
+                      </DropZone>
                       {nextSeg?.kind === 'video' && (
                         <DropZone
                           id={`between-videos:${row.nodeId}:${seg.nodeId}`}
@@ -425,7 +442,7 @@ export function TimelineEditor({ state }: TimelineEditorProps) {
   const activeDragNode = resolveDragNode(activeDragId)
 
   return (
-    <div className="timeline-editor">
+    <div className="timeline-editor" ref={timelineRef} tabIndex={0}>
       <DndContext sensors={sensors} collisionDetection={pointerWithin} onDragStart={onDragStart} onDragEnd={onDragEnd}>
         <SortableContext items={topLevelKeys} strategy={verticalListSortingStrategy}>
           {timeline.map(row => {
@@ -436,7 +453,7 @@ export function TimelineEditor({ state }: TimelineEditorProps) {
                   sortableId={rowKey(row)}
                   node={row.node}
                   selected={selectedNodeId === row.node.id}
-                  onSelect={() => selectNode(row.node)}
+                  onSelect={() => selectNodeAndFocus(row.node)}
                   onDelete={() => deleteNode(row.node.id)}
                 />
               )

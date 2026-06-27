@@ -305,6 +305,29 @@ describe('applyFlowEdit sync', () => {
     expect(timelineIds.size).toBe(project.nodes.length)
   })
 
+  it('moveNodeToVideo from chapter spine nests pause under video', () => {
+    let project = buildChapterFlow()
+    const chapter = project.nodes.find(n => n.type === 'chapter')!
+    const video = project.nodes.find(n => n.type === 'video')!
+    const pause = newNode('pause', 'Spine pause')
+    project = applyFlowEdit(project, {
+      type: 'insert',
+      node: pause,
+      target: { scope: 'chapter', chapterNodeId: chapter.id, afterSegmentIndex: 0 },
+    }, ctx)
+
+    project = applyFlowEdit(project, {
+      type: 'moveNodeToVideo',
+      nodeId: pause.id,
+      videoNodeId: video.id,
+    }, ctx)
+
+    const pauseNode = project.nodes.find(n => n.id === pause.id)!
+    expect(pauseNode.parameters.placement).toBe('during')
+    expect(collectVideoEvents(project, video.id).map(n => n.id)).toContain(pause.id)
+    expect(collectTimelineNodeIds(project, ctx.chapters, ctx.chapterVideos).has(pause.id)).toBe(true)
+  })
+
   it('connectNodes rewires orphan pause onto video event chain', () => {
     let project = buildChapterFlow()
     const video = project.nodes.find(n => n.type === 'video')!
