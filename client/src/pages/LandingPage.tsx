@@ -45,11 +45,11 @@ import '../styles/landing.css'
 
 const DEMO_SLOTS = [
 
-  { pill: 'LIVE', pillVariant: 'live' as const, buttonLabel: 'Join Live', useLiveIcon: true, previewVariant: 'live' as const },
+  { pill: 'LIVE', pillVariant: 'live' as const, title: 'Demo Studio Live', meta: 'See the live experience', buttonLabel: 'Join Live', useLiveIcon: true, previewVariant: 'live' as const },
 
-  { pill: 'On Demand', pillVariant: 'ondemand' as const, buttonLabel: 'Launch On Demand', useLiveIcon: false, previewVariant: 'ondemand' as const },
+  { pill: 'On Demand', pillVariant: 'ondemand' as const, title: 'Demo Studio On Demand', meta: 'Immediate engagement', buttonLabel: 'Launch On Demand', useLiveIcon: false, previewVariant: 'ondemand' as const },
 
-  { pill: 'Replay', pillVariant: 'replay' as const, buttonLabel: 'Watch Replay', useLiveIcon: false, previewVariant: 'replay' as const },
+  { pill: 'Replay', pillVariant: 'replay' as const, title: 'Demo Studio Replay', meta: 'Catchup mode', buttonLabel: 'Watch Replay', useLiveIcon: false, previewVariant: 'replay' as const },
 
 ]
 
@@ -548,9 +548,9 @@ export function LandingPage() {
 
                       pillVariant={slot.pillVariant}
 
-                      title={flow.projectName}
+                      title={slot.title}
 
-                      meta="Interactive video demo"
+                      meta={slot.meta}
 
                       buttonLabel={slot.buttonLabel}
 
