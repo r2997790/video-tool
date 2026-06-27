@@ -6,7 +6,10 @@ import { api } from '../api'
 
 import type { HomePageData } from '../types'
 
+import { FeatureExplorer } from '../components/FeatureExplorer'
+import { LandingDemoPanel } from '../components/LandingDemoPanel'
 import { LandingMediaCard, padHomeItems, type LandingPreviewVariant } from '../components/LandingMediaCard'
+import type { FeaturePreviewKind } from '../components/FeatureExamplePreview'
 
 import {
 
@@ -58,7 +61,12 @@ const EVENT_SLOTS = [
 
 
 
-const FEATURES = [
+const FEATURES: {
+  icon: typeof FlowDesignIcon
+  title: string
+  description: string
+  preview: FeaturePreviewKind
+}[] = [
 
   {
 
@@ -67,6 +75,8 @@ const FEATURES = [
     title: 'Visual flow editor',
 
     description: 'Build branching demo paths with drag-and-drop — no code required. Route viewers based on their answers.',
+
+    preview: 'flow-editor',
 
   },
 
@@ -78,6 +88,8 @@ const FEATURES = [
 
     description: 'Structure product tours as clear, navigable chapters so prospects always know where they are.',
 
+    preview: 'chapters',
+
   },
 
   {
@@ -87,6 +99,8 @@ const FEATURES = [
     title: 'Live chat and AI assistance',
 
     description: 'Engage viewers in real time or let AI handle common questions while your team focuses on high-intent leads.',
+
+    preview: 'live-chat',
 
   },
 
@@ -98,6 +112,8 @@ const FEATURES = [
 
     description: 'Run live demo sessions with registration, countdown lobbies, and automatic go-live at the scheduled time.',
 
+    preview: 'events',
+
   },
 
   {
@@ -107,6 +123,8 @@ const FEATURES = [
     title: 'Lead capture and webhooks',
 
     description: 'Collect contact details during demos and push them straight to your CRM via webhooks or email alerts.',
+
+    preview: 'leads',
 
   },
 
@@ -118,6 +136,8 @@ const FEATURES = [
 
     description: 'Match your logo, colours, and fonts so every demo feels like a natural extension of your website.',
 
+    preview: 'branding',
+
   },
 
   {
@@ -128,6 +148,8 @@ const FEATURES = [
 
     description: 'Trigger timed pop-ups, pause for questions, and gate content — all without leaving the video player.',
 
+    preview: 'in-video',
+
   },
 
   {
@@ -137,6 +159,8 @@ const FEATURES = [
     title: 'Slack and Teams integration',
 
     description: 'Mirror demo chat into your team channels so sales and support can respond from tools they already use.',
+
+    preview: 'integrations',
 
   },
 
@@ -316,6 +340,8 @@ export function LandingPage() {
 
   const [error, setError] = useState('')
 
+  const [demoPanelOpen, setDemoPanelOpen] = useState(false)
+
 
 
   useEffect(() => {
@@ -424,13 +450,17 @@ export function LandingPage() {
 
                 {flows.length > 0 ? (
 
-                  <Link to={flows[0].url} className="lp-btn lp-btn-primary lp-btn-with-icon">
+                  <button
+                    type="button"
+                    className="lp-btn lp-btn-primary lp-btn-with-icon"
+                    onClick={() => setDemoPanelOpen(true)}
+                  >
 
                     <PlayIcon />
 
                     Start a demo
 
-                  </Link>
+                  </button>
 
                 ) : (
 
@@ -490,33 +520,7 @@ export function LandingPage() {
 
             </p>
 
-            <div className="lp-feature-grid">
-
-              {FEATURES.map(feature => {
-
-                const Icon = feature.icon
-
-                return (
-
-                  <article key={feature.title} className="lp-feature-card">
-
-                    <div className="lp-feature-icon">
-
-                      <Icon />
-
-                    </div>
-
-                    <h3 className="lp-feature-title">{feature.title}</h3>
-
-                    <p className="lp-feature-desc">{feature.description}</p>
-
-                  </article>
-
-                )
-
-              })}
-
-            </div>
+            <FeatureExplorer features={FEATURES} />
 
           </div>
 
@@ -763,6 +767,15 @@ export function LandingPage() {
       </main>
 
 
+
+      {flows.length > 0 && (
+        <LandingDemoPanel
+          open={demoPanelOpen}
+          flowSlug={flows[0].slug}
+          flowName={flows[0].projectName}
+          onClose={() => setDemoPanelOpen(false)}
+        />
+      )}
 
       <footer className="lp-footer">
 
