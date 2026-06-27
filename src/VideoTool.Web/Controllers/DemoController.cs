@@ -48,6 +48,16 @@ public class DemoController : ControllerBase
         _attendeeImport = attendeeImport;
     }
 
+    private async Task<FlowProject?> GetFlowForDemoAsync(string slug)
+    {
+        var flow = await _db.FlowProjects.AsNoTracking()
+            .FirstOrDefaultAsync(f => f.Slug == slug);
+        if (flow == null) return null;
+        if (flow.IsEnabled) return flow;
+        if (User.Identity?.IsAuthenticated == true) return flow;
+        return null;
+    }
+
 
 
     [HttpGet("home")]
@@ -117,9 +127,7 @@ public class DemoController : ControllerBase
 
     {
 
-        var flow = await _db.FlowProjects.AsNoTracking()
-
-            .FirstOrDefaultAsync(f => f.Slug == slug && f.IsEnabled);
+        var flow = await GetFlowForDemoAsync(slug);
 
         if (flow == null) return NotFound(new { error = "Flow not found or disabled" });
 
@@ -222,9 +230,7 @@ public class DemoController : ControllerBase
 
     {
 
-        var flow = await _db.FlowProjects.AsNoTracking()
-
-            .FirstOrDefaultAsync(f => f.Slug == slug && f.IsEnabled);
+        var flow = await GetFlowForDemoAsync(slug);
 
         if (flow == null) return NotFound(new { error = "Flow not found or disabled" });
 

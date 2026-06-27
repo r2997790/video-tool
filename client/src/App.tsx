@@ -3,6 +3,7 @@ import { ToastProvider } from './components/Toast'
 import { DemoPage } from './pages/DemoPage'
 import { AdminLayout } from './pages/admin/AdminLayout'
 import { FlowEditorPage } from './pages/admin/FlowEditorPage'
+import { FlowLivePreviewPage } from './pages/admin/FlowLivePreviewPage'
 import { FlowLayout } from './pages/admin/FlowLayout'
 import { FlowsPage } from './pages/admin/FlowsPage'
 import { DemoEntryPage } from './pages/DemoEntryPage'
@@ -53,6 +54,7 @@ export default function App() {
               <Route path="toasters" element={<LegacyFlowTabRedirect />} />
               <Route path="pause-points" element={<LegacyFlowTabRedirect />} />
               <Route path="seed-chat" element={<SeedChatPage />} />
+              <Route path="preview" element={<FlowLivePreviewPage />} />
               <Route path="live-chat" element={<FlowMonitoringRedirect />} />
               <Route path="engagement" element={<FlowMonitoringRedirect />} />
               <Route path="leads" element={<FlowMonitoringRedirect />} />

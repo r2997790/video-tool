@@ -38,6 +38,26 @@
   color: #fff;
 }
 
+.admin-nav-logout {
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  margin-top: 4px;
+  color: #9b9d9f;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.admin-nav-logout:hover {
+  background: #1a1b1d;
+  color: #fff;
+}
+
 .admin-main {
   flex: 1;
   padding: 32px;
@@ -430,6 +450,36 @@
 .flow-editor-workflow-nav .admin-flow-tab {
   padding: 6px 12px;
   font-size: 12px;
+}
+
+.flow-live-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: calc(100dvh - 180px);
+}
+
+.flow-live-preview-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.flow-live-preview-draft-hint {
+  margin: 0;
+  font-size: 13px;
+  color: #9b9d9f;
+}
+
+.flow-live-preview-frame {
+  flex: 1;
+  width: 100%;
+  min-height: 560px;
+  border: 1px solid #26282a;
+  border-radius: 8px;
+  background: #0d0e0f;
 }
 
 .flow-editor-toolbar-actions {
@@ -881,7 +931,6 @@
   .admin-layout { flex-direction: column; }
   .admin-nav { width: 100%; border-right: none; border-bottom: 1px solid #26282a; padding: 16px; }
   .admin-nav.collapsed .admin-nav-links { display: none; }
-  .admin-nav.collapsed .admin-demo-picker { display: none; }
   .admin-main { padding: 16px; }
   .admin-table { display: block; overflow-x: auto; }
   .admin-share-url-row { flex-direction: column; align-items: stretch; }

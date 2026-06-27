@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { api } from '../../api'
-import { HelpDrawer } from '../../components/HelpDrawer'
-import { ViewDemoPicker } from '../../components/ViewDemoPicker'
 import { applyAdminBrandingCss, useAdminBranding } from '../../hooks/useAdminBranding'
 import '../../styles/admin.css'
 
@@ -42,12 +40,17 @@ export function AdminLayout() {
   }
 
   const links = [
-    { to: '/admin/settings', label: 'Settings' },
     { to: '/admin/flows', label: 'Flows' },
     { to: '/admin/events', label: 'Events' },
+    { to: '/admin/settings', label: 'Settings' },
   ]
 
   const isFlowsSection = location.pathname.startsWith('/admin/flows')
+  const isEventsSection = location.pathname.startsWith('/admin/events')
+
+  const handleLogout = () => {
+    api.logout().then(() => navigate('/admin/login'))
+  }
 
   return (
     <div className="admin-layout">
@@ -69,6 +72,7 @@ export function AdminLayout() {
               className={
                 location.pathname === l.to
                 || (l.to === '/admin/flows' && isFlowsSection)
+                || (l.to === '/admin/events' && isEventsSection)
                   ? 'active'
                   : ''
               }
@@ -76,15 +80,7 @@ export function AdminLayout() {
               {l.label}
             </Link>
           ))}
-        </div>
-        <ViewDemoPicker />
-        <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-          <HelpDrawer />
-          <button
-            className="admin-btn admin-btn-sm"
-            style={{ flex: 1 }}
-            onClick={() => api.logout().then(() => navigate('/admin/login'))}
-          >
+          <button type="button" className="admin-nav-logout" onClick={handleLogout}>
             Logout ({auth.username})
           </button>
         </div>
