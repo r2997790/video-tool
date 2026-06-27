@@ -66,8 +66,21 @@ Default credentials (seeded on first run):
 | `ADMIN_PASSWORD` | Initial admin password (default: `admin123`) |
 | `OPENAI_API_KEY` | Optional — enables AI chat responses |
 | `OPENAI_MODEL` | Optional — defaults to `gpt-4o-mini` |
+| `STRIPE_SECRET_KEY` | Optional — Stripe server-side API key for billing |
+| `STRIPE_PUBLISHABLE_KEY` | Optional — Stripe publishable key (returned to client) |
+| `STRIPE_WEBHOOK_SECRET` | Optional — Stripe webhook signing secret |
+| `STRIPE_PRICE_STARTER` | Optional — Stripe Price ID for Starter ($49/mo) |
+| `STRIPE_PRICE_PRO` | Optional — Stripe Price ID for Pro ($149/mo) |
 
 Without `OPENAI_API_KEY`, AI chat uses canned fallback responses.
+
+Without Stripe env vars, pricing CTAs fall back to the admin login page.
+
+### Stripe setup (optional)
+
+1. Create Starter and Pro recurring prices in the [Stripe Dashboard](https://dashboard.stripe.com/test/products) (test mode).
+2. Set the `STRIPE_*` environment variables listed above.
+3. For local webhook testing: `stripe listen --forward-to localhost:5000/api/billing/webhook`
 
 ## Railway Deployment
 
@@ -88,6 +101,9 @@ Without `OPENAI_API_KEY`, AI chat uses canned fallback responses.
 | `CRUD /api/admin/seed-messages` | Manage seed chat |
 | `GET/PUT /api/admin/flow` | Flow editor project |
 | `POST /api/auth/login` | Admin login |
+| `GET /api/billing/config` | Public billing config (Stripe publishable key) |
+| `POST /api/billing/checkout` | Create Stripe Checkout session for Starter/Pro |
+| `POST /api/billing/webhook` | Stripe webhook endpoint |
 
 ## Project Structure
 

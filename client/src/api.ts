@@ -339,6 +339,14 @@ export const api = {
     teamsAppIdConfigured: boolean
     teamsAppPasswordConfigured: boolean
   }>('/api/admin/integrations/status'),
+
+  getBillingConfig: () =>
+    request<{ configured: boolean; publishableKey: string | null }>('/api/billing/config'),
+  createCheckoutSession: (plan: 'starter' | 'pro') =>
+    request<{ url: string }>('/api/billing/checkout', {
+      method: 'POST',
+      body: JSON.stringify({ plan }),
+    }),
 }
 
 export function getSessionId(): string {

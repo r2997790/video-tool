@@ -23,6 +23,9 @@ import { EventLeadsPage } from './pages/admin/event/EventLeadsPage'
 import { EventInsightsPage } from './pages/admin/event/EventInsightsPage'
 import { ChangePasswordPage } from './pages/admin/ChangePasswordPage'
 import { HelpPage } from './pages/admin/HelpPage'
+import { TermsPage } from './pages/legal/TermsPage'
+import { PrivacyPage } from './pages/legal/PrivacyPage'
+import { GdprPage } from './pages/legal/GdprPage'
 
 function LegacyFlowTabRedirect() {
   const { slug = '' } = useParams<{ slug: string }>()
@@ -40,6 +43,9 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<LandingPage />} />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/gdpr" element={<GdprPage />} />
           <Route path="/demo" element={<DemoEntryPage />} />
           <Route path="/flow/:flowSlug" element={<DemoPage />} />
           <Route path="/event/:slug" element={<EventLobbyPage />} />

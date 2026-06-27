@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
 import { api } from '../api'
 
@@ -12,7 +12,9 @@ import { HeroProductShowcase } from '../components/HeroProductShowcase'
 import { HeroValueRotator } from '../components/HeroValueRotator'
 import { LandingDemoPanel } from '../components/LandingDemoPanel'
 import { LandingEventRegistrationModal } from '../components/LandingEventRegistrationModal'
+import { LandingFooter } from '../components/LandingFooter'
 import { LandingMediaCard, padHomeItems } from '../components/LandingMediaCard'
+import { useToast } from '../components/Toast'
 import type { FeaturePreviewKind } from '../components/FeatureExamplePreview'
 
 import {
@@ -226,7 +228,7 @@ const PRICING_TIERS = [
 
     cta: 'Get started',
 
-    ctaTo: '/admin/login',
+    plan: 'starter' as const,
 
     highlights: [
 
@@ -254,7 +256,7 @@ const PRICING_TIERS = [
 
     cta: 'Get started',
 
-    ctaTo: '/admin/login',
+    plan: 'pro' as const,
 
     highlights: [
 
@@ -321,6 +323,8 @@ function normalizeBrandColor(color: string, fallback: string) {
 export function LandingPage() {
 
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const toast = useToast()
   const [data, setData] = useState<HomePageData | null>(null)
 
   const [error, setError] = useState('')
@@ -329,6 +333,8 @@ export function LandingPage() {
 
   const [demoPanelOpen, setDemoPanelOpen] = useState(false)
   const [registrationEvent, setRegistrationEvent] = useState<{ slug: string; title: string } | null>(null)
+  const [billingConfigured, setBillingConfigured] = useState(false)
+  const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null)
 
 
 
@@ -346,7 +352,35 @@ export function LandingPage() {
 
       .catch(() => setAuth({ authenticated: false }))
 
+    api.getBillingConfig()
+
+      .then(config => setBillingConfigured(config.configured))
+
+      .catch(() => setBillingConfigured(false))
+
   }, [])
+
+
+
+  useEffect(() => {
+
+    const checkout = searchParams.get('checkout')
+
+    if (checkout === 'success') {
+
+      toast.success('Subscription checkout completed. Welcome to Demo Studio!')
+
+      setSearchParams({}, { replace: true })
+
+    } else if (checkout === 'cancel') {
+
+      toast.toast('Checkout cancelled.', 'info')
+
+      setSearchParams({}, { replace: true })
+
+    }
+
+  }, [searchParams, setSearchParams, toast])
 
 
 
@@ -400,6 +434,17 @@ export function LandingPage() {
       return
     }
     navigate(authNav.to)
+  }
+
+  const handleCheckout = async (plan: 'starter' | 'pro') => {
+    setCheckoutLoading(plan)
+    try {
+      const { url } = await api.createCheckoutSession(plan)
+      window.location.href = url
+    } catch {
+      toast.error('Unable to start checkout. Please try again or contact support.')
+      setCheckoutLoading(null)
+    }
   }
 
 
@@ -727,6 +772,17 @@ export function LandingPage() {
 
                     </a>
 
+                  ) : 'plan' in tier && tier.plan && billingConfigured ? (
+
+                    <button
+                      type="button"
+                      className={`lp-btn${tier.featured ? ' lp-btn-primary' : ' lp-btn-ghost'} lp-pricing-cta`}
+                      disabled={checkoutLoading === tier.plan}
+                      onClick={() => handleCheckout(tier.plan!)}
+                    >
+                      {checkoutLoading === tier.plan ? 'Redirecting…' : tier.cta}
+                    </button>
+
                   ) : (
 
                     <Link to={authNav.to} className={`lp-btn${tier.featured ? ' lp-btn-primary' : ' lp-btn-ghost'} lp-pricing-cta`}>
@@ -767,25 +823,12 @@ export function LandingPage() {
         onClose={() => setRegistrationEvent(null)}
       />
 
-      <footer className="lp-footer">
-
-        <div className="lp-wrap lp-footer-inner">
-
-          <span>{brandName}</span>
-
-          <div className="lp-footer-links">
-
-            <a href="#features">Features</a>
-
-            <a href="#pricing">Pricing</a>
-
-            <Link to={authNav.to}>{authNav.label}</Link>
-
-          </div>
-
-        </div>
-
-      </footer>
+      <LandingFooter
+        brandName={brandName}
+        auth={auth}
+        showDemos={flows.length > 0}
+        showEvents={events.length > 0}
+      />
 
     </div>
 

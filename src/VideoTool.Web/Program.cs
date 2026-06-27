@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using VideoTool.Data;
 using VideoTool.Data.Migrations;
 using VideoTool.Data.Seeders;
@@ -38,6 +39,9 @@ builder.Services.AddScoped<EventAnalyticsService>();
 builder.Services.AddScoped<AttendeeImportService>();
 builder.Services.AddScoped<PrivacyPolicyService>();
 builder.Services.AddSingleton<ICrmAttendeeProvider, NoOpCrmAttendeeProvider>();
+builder.Services.Configure<StripeOptions>(builder.Configuration.GetSection("Stripe"));
+builder.Services.AddSingleton<IConfigureOptions<StripeOptions>, ConfigureStripeOptionsFromEnv>();
+builder.Services.AddSingleton<StripeService>();
 builder.Services.AddSignalR();
 builder.Services.AddControllers()
     .AddJsonOptions(o =>
