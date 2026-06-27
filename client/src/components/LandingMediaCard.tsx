@@ -14,7 +14,9 @@ type LandingMediaCardProps = {
   url: string
   previewSeed?: string
   previewVariant?: LandingPreviewVariant
-  buttonIcon?: ReactNode
+  buttonIcon?: ReactNode | null
+  onButtonClick?: () => void
+  onPreviewClick?: () => void
 }
 
 function MockPreview({
@@ -73,39 +75,72 @@ export function LandingMediaCard({
   previewSeed = 'default',
   previewVariant = 'ondemand',
   buttonIcon = <PlayIcon />,
+  onButtonClick,
+  onPreviewClick,
 }: LandingMediaCardProps) {
   const isLive = previewVariant === 'live'
   const showPlayOverlay = !isLive
+
+  const previewContent = isLive ? (
+    <MockPreview previewSeed={previewSeed} live animated />
+  ) : (
+    <MockPreview
+      previewSeed={previewSeed}
+      animated={previewVariant === 'ondemand' || previewVariant === 'replay' || previewVariant === 'event'}
+    />
+  )
 
   return (
     <article className={`lp-media-card${isLive ? ' lp-media-card-live' : ''}`}>
       <span className={`lp-pill lp-pill-${pillVariant}${isLive ? ' lp-pill-pulse' : ''}`}>{pill}</span>
 
-      <Link to={url} className="lp-media-preview-link" aria-label={`${buttonLabel}: ${title}`}>
-        {isLive ? (
-          <MockPreview previewSeed={previewSeed} live animated />
-        ) : (
-          <MockPreview
-            previewSeed={previewSeed}
-            animated={previewVariant === 'ondemand' || previewVariant === 'replay' || previewVariant === 'event'}
-          />
-        )}
-        {showPlayOverlay && (
-          <span className="lp-video-preview-play" aria-hidden>
-            <span className="lp-video-preview-play-icon">
-              <PlayIcon />
+      {onPreviewClick ? (
+        <button
+          type="button"
+          className="lp-media-preview-link"
+          aria-label={`${buttonLabel}: ${title}`}
+          onClick={onPreviewClick}
+        >
+          {previewContent}
+          {showPlayOverlay && (
+            <span className="lp-video-preview-play" aria-hidden>
+              <span className="lp-video-preview-play-icon">
+                <PlayIcon />
+              </span>
             </span>
-          </span>
-        )}
-      </Link>
+          )}
+        </button>
+      ) : (
+        <Link to={url} className="lp-media-preview-link" aria-label={`${buttonLabel}: ${title}`}>
+          {previewContent}
+          {showPlayOverlay && (
+            <span className="lp-video-preview-play" aria-hidden>
+              <span className="lp-video-preview-play-icon">
+                <PlayIcon />
+              </span>
+            </span>
+          )}
+        </Link>
+      )}
 
       <h3 className="lp-card-title">{title}</h3>
       <p className="lp-card-meta">{meta}</p>
 
-      <Link to={url} className="lp-btn lp-btn-primary lp-media-card-btn lp-btn-with-icon">
-        {buttonIcon}
-        {buttonLabel}
-      </Link>
+      {onButtonClick ? (
+        <button
+          type="button"
+          className={`lp-btn lp-btn-primary lp-media-card-btn${buttonIcon ? ' lp-btn-with-icon' : ''}`}
+          onClick={onButtonClick}
+        >
+          {buttonIcon}
+          {buttonLabel}
+        </button>
+      ) : (
+        <Link to={url} className={`lp-btn lp-btn-primary lp-media-card-btn${buttonIcon ? ' lp-btn-with-icon' : ''}`}>
+          {buttonIcon}
+          {buttonLabel}
+        </Link>
+      )}
     </article>
   )
 }

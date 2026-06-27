@@ -11,7 +11,8 @@ import { FeatureExplorer } from '../components/FeatureExplorer'
 import { HeroProductShowcase } from '../components/HeroProductShowcase'
 import { HeroValueRotator } from '../components/HeroValueRotator'
 import { LandingDemoPanel } from '../components/LandingDemoPanel'
-import { LandingMediaCard, padHomeItems, type LandingPreviewVariant } from '../components/LandingMediaCard'
+import { LandingEventRegistrationModal } from '../components/LandingEventRegistrationModal'
+import { LandingMediaCard, padHomeItems } from '../components/LandingMediaCard'
 import type { FeaturePreviewKind } from '../components/FeatureExamplePreview'
 
 import {
@@ -54,11 +55,25 @@ const DEMO_SLOTS = [
 
 
 
-const EVENT_SLOTS = [
+const LANDING_EVENT_CARDS = [
 
-  { pill: 'Limited Availability', pillVariant: 'limited' as const, buttonLabel: 'Join the Waitlist', previewVariant: 'event' as const },
+  {
+    pill: 'Limited Access',
+    pillVariant: 'limited' as const,
+    title: 'Create a world-class demo lead magnet',
+    buttonLabel: 'Register',
+    meta: 'Exclusive session · Limited seats',
+    previewVariant: 'event' as const,
+  },
 
-  { pill: 'Register Now', pillVariant: 'register' as const, buttonLabel: 'Book your Seat', previewVariant: 'event' as const },
+  {
+    pill: 'Register Now',
+    pillVariant: 'register' as const,
+    title: 'How to make buyers self-identify',
+    buttonLabel: 'Register',
+    meta: 'Upcoming broadcast · Reserve your spot',
+    previewVariant: 'event' as const,
+  },
 
 ]
 
@@ -291,40 +306,6 @@ const PRICING_TIERS = [
 
 
 
-function formatEventTime(iso: string | null | undefined, timezone?: string | null) {
-
-  if (!iso) return null
-
-  try {
-
-    const date = new Date(iso.includes('T') && !/[zZ]|[+-]\d{2}:?\d{2}$/.test(iso) ? `${iso}Z` : iso)
-
-    return date.toLocaleString(undefined, {
-
-      weekday: 'short',
-
-      month: 'short',
-
-      day: 'numeric',
-
-      hour: 'numeric',
-
-      minute: '2-digit',
-
-      ...(timezone ? { timeZone: timezone } : {}),
-
-    })
-
-  } catch {
-
-    return null
-
-  }
-
-}
-
-
-
 function normalizeBrandColor(color: string, fallback: string) {
 
   const normalized = color.trim().toLowerCase()
@@ -347,6 +328,7 @@ export function LandingPage() {
   const [auth, setAuth] = useState<AuthMeResponse | null>(null)
 
   const [demoPanelOpen, setDemoPanelOpen] = useState(false)
+  const [registrationEvent, setRegistrationEvent] = useState<{ slug: string; title: string } | null>(null)
 
 
 
@@ -610,15 +592,12 @@ export function LandingPage() {
 
                 {padHomeItems(events, 2).map((ev, index) => {
 
-                  const slot = EVENT_SLOTS[index]
+                  const display = LANDING_EVENT_CARDS[index]
 
-                  const meta = ev.isLive
-
-                    ? 'Broadcast in progress'
-
-                    : formatEventTime(ev.nextStartsAtUtc ?? ev.startsAtUtc, ev.timezone) ?? 'Scheduled'
-
-                  const previewVariant: LandingPreviewVariant = ev.isLive ? 'live' : slot.previewVariant
+                  const openRegistration = () => setRegistrationEvent({
+                    slug: ev.slug,
+                    title: display.title,
+                  })
 
                   return (
 
@@ -626,23 +605,27 @@ export function LandingPage() {
 
                       key={`${ev.slug}-${index}`}
 
-                      pill={ev.isLive ? 'LIVE' : slot.pill}
+                      pill={display.pill}
 
-                      pillVariant={ev.isLive ? 'live' : slot.pillVariant}
+                      pillVariant={display.pillVariant}
 
-                      title={ev.title}
+                      title={display.title}
 
-                      meta={meta}
+                      meta={display.meta}
 
-                      buttonLabel={ev.isLive ? 'Join Live' : slot.buttonLabel}
+                      buttonLabel={display.buttonLabel}
 
                       url={ev.url}
 
                       previewSeed={ev.slug}
 
-                      previewVariant={previewVariant}
+                      previewVariant={display.previewVariant}
 
-                      buttonIcon={ev.isLive ? <LiveIcon /> : undefined}
+                      buttonIcon={null}
+
+                      onButtonClick={openRegistration}
+
+                      onPreviewClick={openRegistration}
 
                     />
 
@@ -776,6 +759,13 @@ export function LandingPage() {
           onClose={() => setDemoPanelOpen(false)}
         />
       )}
+
+      <LandingEventRegistrationModal
+        open={registrationEvent !== null}
+        eventSlug={registrationEvent?.slug ?? ''}
+        eventTitle={registrationEvent?.title ?? ''}
+        onClose={() => setRegistrationEvent(null)}
+      />
 
       <footer className="lp-footer">
 
