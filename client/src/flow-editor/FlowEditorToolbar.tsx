@@ -16,6 +16,7 @@ import { FlowWorkflowNav } from './FlowWorkflowNav'
 import { SelectionContextBar } from './SelectionContextBar'
 import {
   AddStepIcon,
+  AutoArrangeIcon,
   ExportIcon,
   ImportIcon,
   SavedIcon,
@@ -28,6 +29,8 @@ interface FlowEditorToolbarProps {
   state: FlowEditorState
   onSave: (force?: boolean) => void
   onAddNode: (type: FlowNode['type']) => void
+  onAutoArrange: () => void
+  onViewModeChange: (view: 'timeline' | 'visual') => void
   onDeleteSelection: () => void
   onBreakLink: () => void
   onNestInChapter: (chapterNodeId: string) => void
@@ -44,6 +47,8 @@ export function FlowEditorToolbar({
   state,
   onSave,
   onAddNode,
+  onAutoArrange,
+  onViewModeChange,
   onDeleteSelection,
   onBreakLink,
   onNestInChapter,
@@ -51,7 +56,6 @@ export function FlowEditorToolbar({
   const {
     projectName,
     view,
-    setViewMode,
     dirty,
     saving,
     flowSlug,
@@ -137,13 +141,22 @@ export function FlowEditorToolbar({
                 role="tab"
                 aria-selected={view === v}
                 className={`flow-view-toggle-btn admin-btn-with-icon${view === v ? ' is-active' : ''}`}
-                onClick={() => setViewMode(v)}
+                onClick={() => onViewModeChange(v)}
               >
                 {v === 'timeline' ? <TimelineIcon /> : <VisualIcon />}
                 <span>{v === 'timeline' ? 'Timeline' : 'Visual'}</span>
               </button>
             ))}
           </div>
+          <button
+            type="button"
+            className="admin-btn admin-btn-with-icon"
+            onClick={onAutoArrange}
+            title="Tidy up node positions on the visual canvas"
+          >
+            <AutoArrangeIcon />
+            <span>Auto-arrange</span>
+          </button>
           <div className="flow-editor-toolbar-actions">
             <AdminMenu
               align="left"

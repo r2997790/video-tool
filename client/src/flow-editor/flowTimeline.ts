@@ -35,10 +35,16 @@ export type TimelineRow = TimelineStepRow | TimelineChapterRow
 export const TOP_LEVEL_STEP_TYPES = new Set<FlowNode['type']>(['question', 'branch', 'event', 'aichat'])
 
 /** Nested inside chapter blocks only (between videos). */
-export const CHAPTER_INTERSTITIAL_TYPES = new Set<FlowNode['type']>(['question', 'branch', 'event', 'aichat', 'pause', 'toaster'])
+export const CHAPTER_INTERSTITIAL_TYPES = new Set<FlowNode['type']>(['question', 'branch', 'event', 'aichat'])
 
 /** Attached to a video node during playback. */
 export const VIDEO_NEST_TYPES = new Set<FlowNode['type']>(['question', 'pause', 'toaster', 'aichat'])
+
+/** Must be placed on a video (during playback), never on spine or top level. */
+export const VIDEO_REQUIRED_ATTACH_TYPES = new Set<FlowNode['type']>(['pause', 'toaster'])
+
+export const VIDEO_REQUIRED_REJECT_MESSAGE =
+  'Select a video node first, or add a chapter with a video.'
 
 /** Types that can be dropped into a chapter group on the visual canvas. */
 export const CHAPTER_NEST_TYPES = new Set<FlowNode['type']>([...CHAPTER_INTERSTITIAL_TYPES, 'video'])
@@ -217,7 +223,42 @@ export type InsertTarget =
   | { scope: 'video'; videoNodeId: string }
   | { scope: 'reject'; message: string }
 
-const NEST_IN_CHAPTER_TYPES = new Set<FlowNode['type']>(['question', 'branch', 'aichat', 'event', 'pause', 'toaster'])
+const NEST_IN_CHAPTER_TYPES = new Set<FlowNode['type']>(['question', 'branch', 'aichat', 'event'])
+
+function isVideoRequiredAttachType(type: FlowNode['type']): boolean {
+  return VIDEO_REQUIRED_ATTACH_TYPES.has(type)
+}
+
+function resolveVideoTargetForAttach(
+  project: FlowProject,
+  selectedNode: FlowNode | null,
+  chapterVideos: AdminChapterVideo[],
+): InsertTarget {
+  if (selectedNode?.type === 'video') {
+    return { scope: 'video', videoNodeId: selectedNode.id }
+  }
+  if (selectedNode && isPlaybackTriggerNode(selectedNode, project)) {
+    const video = findVideoAncestor(project, selectedNode.id)
+    if (video) return { scope: 'video', videoNodeId: video.id }
+  }
+  if (selectedNode) {
+    const chapter = selectedNode.type === 'chapter'
+      ? selectedNode
+      : findChapterAncestor(project, selectedNode.id)
+    if (chapter) {
+      const block = parseChapterBlockForLayout(project, chapter, chapterVideos)
+      const firstVideo = block.segments.find((s): s is TimelineVideoSegment => s.kind === 'video')
+      if (firstVideo) {
+        return { scope: 'video', videoNodeId: firstVideo.nodeId }
+      }
+    }
+  }
+  const videos = project.nodes.filter(n => n.type === 'video')
+  if (videos.length === 1) {
+    return { scope: 'video', videoNodeId: videos[0].id }
+  }
+  return { scope: 'reject', message: VIDEO_REQUIRED_REJECT_MESSAGE }
+}
 
 export function resolveInsertTarget(
   project: FlowProject,
@@ -225,6 +266,10 @@ export function resolveInsertTarget(
   type: FlowNode['type'],
   _chapterVideos: AdminChapterVideo[],
 ): InsertTarget {
+  if (isVideoRequiredAttachType(type)) {
+    return resolveVideoTargetForAttach(project, selectedNode, _chapterVideos)
+  }
+
   if (isVideoAttachType(type)) {
     if (selectedNode?.type === 'video') {
       return { scope: 'video', videoNodeId: selectedNode.id }
@@ -239,9 +284,6 @@ export function resolveInsertTarget(
         const afterSegmentIndex = getAfterSegmentIndexForSelection(project, chapter, selectedNode, _chapterVideos)
         return { scope: 'chapter', chapterNodeId: chapter.id, afterSegmentIndex }
       }
-    }
-    if (type === 'pause') {
-      return { scope: 'reject', message: 'Place Pause & Ask on a video (during playback).' }
     }
     return { scope: 'top' }
   }
@@ -809,6 +851,7 @@ export type TimelineEdit =
   | { type: 'moveToTopLevel'; nodeId: string }
 
 export function canNestInChapter(node: FlowNode): boolean {
+  if (VIDEO_REQUIRED_ATTACH_TYPES.has(node.type)) return false
   return isChapterInterstitial(node) || node.type === 'video'
 }
 
@@ -1112,10 +1155,6 @@ export function insertNodeInTimeline(
       next.connections = next.connections.filter(c => !(c.from === fromId && c.to === after.id && c.from !== node.id))
     }
     return next
-  }
-
-  if (node.type === 'toaster') {
-    node.parameters = { ...node.parameters, placement: 'between' }
   }
 
   next.nodes.push(node)

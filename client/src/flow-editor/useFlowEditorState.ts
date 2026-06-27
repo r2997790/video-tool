@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from '../api'
 import type { AdminChapter, AdminChapterVideo, FlowNode, FlowProject, ScheduledEvent } from '../types'
-import { applyFlowEdit, type FlowEdit } from './applyFlowEdit'
+import { applyFlowEdit, normalizeFlowProject, type FlowEdit } from './applyFlowEdit'
 import { emptyProject } from './flowSchema'
 import { migrateIntroOutroNodes, migrateLegacyEventNodes, migrateLegacyPlaybackToFlow } from './flowMigration'
 import { ensureLegacyChapterVideos } from './flowTimeline'
@@ -95,7 +95,8 @@ export function useFlowEditorState(flowSlug: string) {
   }, [editContext, projectName])
 
   const save = useCallback(async (force = false) => {
-    const warnings = validateFlowProject(project, {
+    const normalized = normalizeFlowProject(project, editContext)
+    const warnings = validateFlowProject(normalized, {
       chapterCount: chapters.length,
       isEnabled: flowEnabled,
       chapterVideos,
@@ -104,13 +105,18 @@ export function useFlowEditorState(flowSlug: string) {
 
     setSaving(true)
     try {
-      await api.updateFlow(flowSlug, { projectName, projectData: project })
-      setSavedSnapshot(JSON.stringify({ projectName, project }))
+      const payload = { projectName, projectData: normalized }
+      const saved = await api.updateFlow(flowSlug, payload)
+      const mergedProject = saved.projectData
+        ? { ...saved.projectData, projectName: saved.projectName ?? projectName }
+        : { ...normalized, projectName }
+      setProject(mergedProject)
+      setSavedSnapshot(JSON.stringify({ projectName: saved.projectName ?? projectName, project: mergedProject }))
       return { ok: true as const, warnings: [] as string[] }
     } finally {
       setSaving(false)
     }
-  }, [flowSlug, projectName, project, chapters.length, flowEnabled, chapterVideos])
+  }, [flowSlug, projectName, project, editContext, chapters.length, flowEnabled, chapterVideos])
 
   const refreshVideos = useCallback(() => {
     api.getFlowChapterVideos(flowSlug).then(setChapterVideos).catch(() => setChapterVideos([]))

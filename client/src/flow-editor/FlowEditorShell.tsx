@@ -59,6 +59,16 @@ export function FlowEditorShell({ flowSlug }: FlowEditorShellProps) {
     setPendingForce(false)
   }
 
+  const handleAutoArrange = useCallback(() => {
+    state.applyEdit({ type: 'autoLayout' })
+    toast.success('Flow arranged')
+  }, [state, toast])
+
+  const handleViewModeChange = useCallback((v: 'timeline' | 'visual') => {
+    state.applyEdit({ type: 'normalize' })
+    state.setViewMode(v)
+  }, [state])
+
   const handleAddNode = useCallback((type: FlowNode['type']) => {
     addNodeWithContext(state, type, toast)
   }, [state, toast])
@@ -137,6 +147,16 @@ export function FlowEditorShell({ flowSlug }: FlowEditorShellProps) {
     .filter(n => n.type === 'chapter')
     .map(n => ({ id: n.id, label: n.name }))
 
+  useEffect(() => {
+    if (!state.dirty) return
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [state.dirty])
+
   if (loading) {
     return <div className="admin-skeleton" style={{ height: 200 }} aria-busy="true" />
   }
@@ -149,6 +169,8 @@ export function FlowEditorShell({ flowSlug }: FlowEditorShellProps) {
         state={state}
         onSave={handleSave}
         onAddNode={handleAddNode}
+        onAutoArrange={handleAutoArrange}
+        onViewModeChange={handleViewModeChange}
         onDeleteSelection={handleDeleteSelection}
         onBreakLink={handleBreakLink}
         onNestInChapter={handleNestInChapter}

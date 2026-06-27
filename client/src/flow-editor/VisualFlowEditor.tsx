@@ -29,6 +29,7 @@ import {
   projectToGraph,
   resolveDropTarget,
   resolveInsertDropTarget,
+  resolveVideoDropTarget,
 } from './flowGraphLayout'
 import { insertNodeAtTarget } from './flowInsert'
 import { getPaletteDragType, VisualNodePalette } from './VisualNodePalette'
@@ -58,6 +59,14 @@ function FlowNodeCard({ data }: { data: { label: string; nodeType: string; param
         <div className="flow-canvas-node-sub">{(data.parameters.mode as string) === 'slug' ? String(data.parameters.eventSlug || 'event') : 'Countdown'}</div>
       )}
       <Handle type="source" position={Position.Right} />
+    </div>
+  )
+}
+
+function VideoDropZoneNode({ data }: { data: { videoNodeId: string; isDropHover?: boolean } }) {
+  return (
+    <div className={`flow-video-drop-zone${data.isDropHover ? ' is-over' : ''}`}>
+      Drop pause / toaster / question / AI chat here
     </div>
   )
 }
@@ -95,7 +104,7 @@ function ChapterGroupNode({
   )
 }
 
-const nodeTypes = { flowNode: FlowNodeCard, chapterGroup: ChapterGroupNode }
+const nodeTypes = { flowNode: FlowNodeCard, chapterGroup: ChapterGroupNode, videoDropZone: VideoDropZoneNode }
 
 function toReactFlowEdges(connections: FlowProject['connections']): Edge[] {
   return connections.map((c, i) => ({
@@ -157,6 +166,7 @@ function VisualFlowEditorCanvas({ state }: VisualFlowEditorProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
   const [dragOverChapterId, setDragOverChapterId] = useState<string | null>(null)
+  const [dragOverVideoId, setDragOverVideoId] = useState<string | null>(null)
   const [insertionIndex, setInsertionIndex] = useState<number | null>(null)
   const [a11yMessage, setA11yMessage] = useState('')
   const canvasRef = useRef<HTMLDivElement>(null)
@@ -205,9 +215,16 @@ function VisualFlowEditorCanvas({ state }: VisualFlowEditorProps) {
         const videoSubtitle = v ? `${v.title}${v.duration ? ` · ${v.duration}` : ''}` : videoId ? `Video #${videoId}` : undefined
         return { ...n, data: { ...n.data, videoSubtitle } }
       }
+      if (n.type === 'videoDropZone') {
+        const videoNodeId = (n.data as { videoNodeId: string }).videoNodeId
+        return {
+          ...n,
+          data: { ...n.data, isDropHover: videoNodeId === dragOverVideoId },
+        }
+      }
       return n
     })
-  }, [project, chapters, chapterVideos, dragOverChapterId, insertionIndex])
+  }, [project, chapters, chapterVideos, dragOverChapterId, dragOverVideoId, insertionIndex])
 
   useEffect(() => {
     syncingRef.current = true
@@ -256,11 +273,17 @@ function VisualFlowEditorCanvas({ state }: VisualFlowEditorProps) {
   }, [onEdgesChange, edges, applyEdit, selectedEdge, selectEdge])
 
   const updateDragTarget = useCallback((target: ReturnType<typeof resolveDropTarget>) => {
-    if (target?.scope === 'chapter') {
+    if (target?.scope === 'video') {
+      setDragOverVideoId(target.videoNodeId)
+      setDragOverChapterId(null)
+      setInsertionIndex(null)
+    } else if (target?.scope === 'chapter') {
       setDragOverChapterId(target.chapterNodeId)
+      setDragOverVideoId(null)
       setInsertionIndex(target.afterSegmentIndex ?? 0)
     } else {
       setDragOverChapterId(null)
+      setDragOverVideoId(null)
       setInsertionIndex(null)
     }
   }, [])
@@ -273,6 +296,7 @@ function VisualFlowEditorCanvas({ state }: VisualFlowEditorProps) {
 
   const onNodeDragStop = useCallback((_: unknown, node: Node) => {
     setDragOverChapterId(null)
+    setDragOverVideoId(null)
     setInsertionIndex(null)
     if (syncingRef.current) return
 
@@ -300,11 +324,32 @@ function VisualFlowEditorCanvas({ state }: VisualFlowEditorProps) {
   const onDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     e.dataTransfer.dropEffect = 'move'
-  }, [])
+    const nodeType = paletteDragTypeRef.current ?? getPaletteDragType(e.dataTransfer)
+    if (nodeType) {
+      const flowPosition = screenToFlowPosition({ x: e.clientX, y: e.clientY })
+      const videoDrop = resolveVideoDropTarget(flowPosition, nodesRef.current)
+      if (videoDrop?.scope === 'video') {
+        setDragOverVideoId(videoDrop.videoNodeId)
+        setDragOverChapterId(null)
+        setInsertionIndex(null)
+        return
+      }
+      const dropTarget = resolveInsertDropTarget(
+        project,
+        flowPosition,
+        nodeType,
+        nodesRef.current,
+        chapters,
+        chapterVideos,
+      )
+      updateDragTarget(dropTarget)
+    }
+  }, [project, chapters, chapterVideos, screenToFlowPosition, updateDragTarget])
 
   const onDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     setDragOverChapterId(null)
+    setDragOverVideoId(null)
     setInsertionIndex(null)
 
     const nodeType = paletteDragTypeRef.current ?? getPaletteDragType(e.dataTransfer)
@@ -312,7 +357,8 @@ function VisualFlowEditorCanvas({ state }: VisualFlowEditorProps) {
     if (!nodeType) return
 
     const flowPosition = screenToFlowPosition({ x: e.clientX, y: e.clientY })
-    const dropTarget = resolveInsertDropTarget(
+    const videoDrop = resolveVideoDropTarget(flowPosition, nodesRef.current)
+    const dropTarget = videoDrop ?? resolveInsertDropTarget(
       project,
       flowPosition,
       nodeType,

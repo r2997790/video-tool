@@ -8,6 +8,7 @@ import {
   projectToTimeline,
   TOP_LEVEL_DRAG_TYPES,
   VIDEO_NEST_TYPES,
+  VIDEO_REQUIRED_ATTACH_TYPES,
   type ChapterSegment,
   type InsertTarget,
 } from './flowTimeline'
@@ -51,9 +52,12 @@ export function isFreePositionNode(project: FlowProject, nodeId: string): boolea
 
 function videoSegmentHeight(seg: ChapterSegment): number {
   if (seg.kind !== 'video') return NESTED_NODE_HEIGHT + 12
-  const nestHeight = NESTED_NODE_HEIGHT + 8 + (seg.events.length > 0 ? 56 : 40)
+  const nestHeight = NESTED_NODE_HEIGHT + 8 + (seg.events.length > 0 ? 56 : 0) + VIDEO_DROP_STRIP_HEIGHT + 8
   return nestHeight + 8
 }
+
+export const VIDEO_DROP_STRIP_HEIGHT = 28
+export const VIDEO_NEST_HIT_PADDING = 20
 
 function resolveVideoNestHit(
   localY: number,
@@ -62,8 +66,10 @@ function resolveVideoNestHit(
   let childY = CHAPTER_GROUP_PADDING + 40
   for (const seg of segments) {
     if (seg.kind === 'video') {
-      const nestHeight = NESTED_NODE_HEIGHT + 8 + (seg.events.length > 0 ? 56 : 40)
-      if (localY >= childY && localY < childY + nestHeight) {
+      const nestHeight = NESTED_NODE_HEIGHT + 8 + (seg.events.length > 0 ? 56 : 40) + VIDEO_DROP_STRIP_HEIGHT
+      const hitTop = childY - VIDEO_NEST_HIT_PADDING
+      const hitBottom = childY + nestHeight + VIDEO_NEST_HIT_PADDING
+      if (localY >= hitTop && localY < hitBottom) {
         return seg.nodeId
       }
       childY += nestHeight + 8
@@ -196,7 +202,19 @@ export function projectToGraph(
         eventX += 160
       }
       if (seg.events.length > 0) childY += 56
-      childY += 8
+
+      nodes.push({
+        id: `video-drop:${videoNode.id}`,
+        type: 'videoDropZone',
+        parentId: chapterNode.id,
+        extent: 'parent',
+        position: { x: CHAPTER_GROUP_PADDING, y: childY },
+        data: { videoNodeId: videoNode.id },
+        draggable: false,
+        selectable: false,
+        connectable: false,
+      })
+      childY += VIDEO_DROP_STRIP_HEIGHT + 8
     }
   }
 
@@ -253,7 +271,7 @@ export type DropTarget =
   | { scope: 'video'; videoNodeId: string }
 
 function canInsertAtTop(nodeType: FlowNode['type']): boolean {
-  return nodeType !== 'pause'
+  return !VIDEO_REQUIRED_ATTACH_TYPES.has(nodeType)
 }
 
 function resolveDropAtPosition(
@@ -289,6 +307,9 @@ function resolveDropAtPosition(
       if (videoNodeId) {
         return { scope: 'video', videoNodeId }
       }
+      if (VIDEO_REQUIRED_ATTACH_TYPES.has(nodeType)) {
+        return null
+      }
     }
 
     if (CHAPTER_NEST_TYPES.has(nodeType)) {
@@ -309,6 +330,42 @@ function resolveDropAtPosition(
   }
 
   return null
+}
+
+export function resolveVideoDropTarget(
+  flowPosition: { x: number; y: number },
+  graphNodes: Node[],
+): DropTarget | null {
+  for (const n of graphNodes) {
+    if (n.type !== 'videoDropZone') continue
+    const abs = absoluteGraphPosition(n, graphNodes)
+    const w = NESTED_NODE_WIDTH
+    const h = VIDEO_DROP_STRIP_HEIGHT
+    if (
+      flowPosition.x >= abs.x
+      && flowPosition.x <= abs.x + w
+      && flowPosition.y >= abs.y
+      && flowPosition.y <= abs.y + h
+    ) {
+      const videoNodeId = (n.data as { videoNodeId: string }).videoNodeId
+      return { scope: 'video', videoNodeId }
+    }
+  }
+  return null
+}
+
+function absoluteGraphPosition(node: Node, graphNodes: Node[]): { x: number; y: number } {
+  let x = node.position.x
+  let y = node.position.y
+  let parentId = node.parentId
+  while (parentId) {
+    const parent = graphNodes.find(n => n.id === parentId)
+    if (!parent) break
+    x += parent.position.x
+    y += parent.position.y
+    parentId = parent.parentId
+  }
+  return { x, y }
 }
 
 export function resolveDropTarget(

@@ -13,6 +13,11 @@ namespace VideoTool.Web.Controllers;
 [Authorize]
 public class AdminController : ControllerBase
 {
+    private static readonly JsonSerializerOptions FlowJsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+    };
+
     private readonly VideoToolDbContext _db;
     private readonly ChatMessageService _chat;
     private readonly IWebHostEnvironment _env;
@@ -511,7 +516,7 @@ public class AdminController : ControllerBase
             return BadRequest(new { error = "Slug already in use" });
 
         var emptyGraph = dto.ProjectData != null
-            ? JsonSerializer.Serialize(dto.ProjectData)
+            ? JsonSerializer.Serialize(dto.ProjectData, FlowJsonOptions)
             : """{"projectName":"Demo Flow","nodes":[],"connections":[]}""";
 
         var flow = new FlowProject
@@ -545,7 +550,7 @@ public class AdminController : ControllerBase
 
         if (dto.ProjectName != null) flow.ProjectName = dto.ProjectName;
         if (dto.ProjectData != null)
-            flow.ProjectDataJson = JsonSerializer.Serialize(dto.ProjectData);
+            flow.ProjectDataJson = JsonSerializer.Serialize(dto.ProjectData, FlowJsonOptions);
         flow.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
         return Ok(MapFlowDetail(flow));

@@ -90,7 +90,7 @@ export const api = {
   getFlow: (slug = 'default') =>
     request<import('./types').FlowDetail>(`/api/admin/flows/${encodeURIComponent(slug)}`),
   updateFlow: (slug: string, data: { projectName?: string; projectData?: import('./types').FlowProject }) =>
-    request(`/api/admin/flows/${encodeURIComponent(slug)}`, { method: 'PUT', body: JSON.stringify(data) }),
+    request<import('./types').FlowDetail>(`/api/admin/flows/${encodeURIComponent(slug)}`, { method: 'PUT', body: JSON.stringify(data) }),
   getFlows: () => request<import('./types').FlowSummary[]>('/api/admin/flows'),
   createFlow: (data: { slug: string; projectName: string; projectData?: import('./types').FlowProject; isEnabled?: boolean }) =>
     request('/api/admin/flows', { method: 'POST', body: JSON.stringify(data) }),

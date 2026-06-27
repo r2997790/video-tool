@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { applyFlowEdit } from './applyFlowEdit'
 import { newNode } from './flowSchema'
-import { projectToTimeline, findChapterAncestor, resolveInsertTarget, reorderEventsUnderVideo, collectVideoEvents } from './flowTimeline'
+import { projectToTimeline, findChapterAncestor, resolveInsertTarget, reorderEventsUnderVideo, collectVideoEvents, VIDEO_REQUIRED_REJECT_MESSAGE } from './flowTimeline'
 import type { FlowProject } from '../types'
 import type { AdminChapter, AdminChapterVideo } from '../types'
 
@@ -258,9 +258,82 @@ describe('applyFlowEdit sync', () => {
     expect(events.map(n => n.name)).toEqual(['Pause A', 'Pause B'])
   })
 
-  it('resolveInsertTarget rejects top-level pause insert', () => {
+  it('resolveInsertTarget auto-attaches pause to sole project video when nothing selected', () => {
     const project = buildChapterFlow()
+    const video = project.nodes.find(n => n.type === 'video')!
     const target = resolveInsertTarget(project, null, 'pause', ctx.chapterVideos)
-    expect(target).toEqual({ scope: 'reject', message: 'Place Pause & Ask on a video (during playback).' })
+    expect(target).toEqual({ scope: 'video', videoNodeId: video.id })
+  })
+
+  it('resolveInsertTarget rejects pause when no video exists', () => {
+    const project: FlowProject = {
+      projectName: 'Empty',
+      nodes: [newNode('question', 'Start')],
+      connections: [],
+    }
+    const target = resolveInsertTarget(project, null, 'pause', ctx.chapterVideos)
+    expect(target).toEqual({ scope: 'reject', message: VIDEO_REQUIRED_REJECT_MESSAGE })
+  })
+
+  it('connectNodes rewires orphan pause onto video event chain', () => {
+    let project = buildChapterFlow()
+    const video = project.nodes.find(n => n.type === 'video')!
+    const pause = newNode('pause', 'Orphan pause')
+    project = { ...project, nodes: [...project.nodes, pause] }
+
+    project = applyFlowEdit(project, {
+      type: 'connectNodes',
+      from: video.id,
+      to: pause.id,
+    }, ctx)
+
+    const pauseNode = project.nodes.find(n => n.id === pause.id)!
+    expect(pauseNode.parameters.placement).toBe('during')
+    expect(collectVideoEvents(project, video.id).map(n => n.id)).toContain(pause.id)
+  })
+
+  it('normalize rebuilds spine without losing timeline nodes', () => {
+    let project = buildChapterFlow()
+    const video = project.nodes.find(n => n.type === 'video')!
+    const pause = newNode('pause', 'Pause norm')
+    project = applyFlowEdit(project, {
+      type: 'insert',
+      node: pause,
+      target: { scope: 'video', videoNodeId: video.id },
+    }, ctx)
+
+    const beforeCount = project.nodes.length
+    const normalized = applyFlowEdit(project, { type: 'normalize' }, ctx)
+    const timeline = projectToTimeline(normalized, ctx.chapters, ctx.chapterVideos)
+
+    expect(normalized.nodes.length).toBe(beforeCount)
+    expect(timeline.some(r => r.kind === 'chapter')).toBe(true)
+  })
+
+  it('JSON round-trip preserves timeline structure', () => {
+    let project = buildChapterFlow()
+    const video = project.nodes.find(n => n.type === 'video')!
+    const toaster = newNode('toaster', 'Tip')
+    project = applyFlowEdit(project, {
+      type: 'insert',
+      node: toaster,
+      target: { scope: 'video', videoNodeId: video.id },
+    }, ctx)
+
+    const beforeTimeline = projectToTimeline(project, ctx.chapters, ctx.chapterVideos)
+    const json = JSON.stringify(project)
+    const restored = JSON.parse(json) as FlowProject
+    const afterTimeline = projectToTimeline(restored, ctx.chapters, ctx.chapterVideos)
+
+    expect(afterTimeline.length).toBe(beforeTimeline.length)
+    const chapterRow = afterTimeline.find(r => r.kind === 'chapter')
+    expect(chapterRow?.kind).toBe('chapter')
+    if (chapterRow?.kind === 'chapter') {
+      const videoSeg = chapterRow.segments.find(s => s.kind === 'video')
+      expect(videoSeg?.kind).toBe('video')
+      if (videoSeg?.kind === 'video') {
+        expect(videoSeg.events.some(e => e.type === 'toaster')).toBe(true)
+      }
+    }
   })
 })

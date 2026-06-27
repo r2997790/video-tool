@@ -5,6 +5,7 @@ import {
   isFreePositionNode,
   projectToGraph,
   resolveInsertDropTarget,
+  resolveVideoDropTarget,
 } from './flowGraphLayout'
 import { newNode } from './flowSchema'
 import { projectToTimeline } from './flowTimeline'
@@ -171,6 +172,54 @@ describe('flowGraphLayout', () => {
 
     expect(target?.scope).toBe('chapter')
     expect(target?.scope === 'chapter' && target.chapterNodeId).toBe(chapter.id)
+  })
+
+  it('resolveInsertDropTarget returns null for pause outside video nest', () => {
+    const project = buildChapterFlow()
+    const graph = projectToGraph(project, ctx.chapters, ctx.chapterVideos)
+    const chapter = project.nodes.find(n => n.type === 'chapter')!
+    const group = graph.find(n => n.id === chapter.id)!
+
+    const target = resolveInsertDropTarget(
+      project,
+      { x: group!.position.x + 40, y: group!.position.y + 260 },
+      'pause',
+      graph,
+      ctx.chapters,
+      ctx.chapterVideos,
+    )
+
+    expect(target).toBeNull()
+  })
+
+  it('resolveInsertDropTarget returns null for toaster at top level', () => {
+    const project = buildChapterFlow()
+    const graph = projectToGraph(project, ctx.chapters, ctx.chapterVideos)
+
+    const target = resolveInsertDropTarget(
+      project,
+      { x: 50, y: 50 },
+      'toaster',
+      graph,
+      ctx.chapters,
+      ctx.chapterVideos,
+    )
+
+    expect(target).toBeNull()
+  })
+
+  it('resolveVideoDropTarget hits video drop strip nodes', () => {
+    const project = buildChapterFlow()
+    const graph = projectToGraph(project, ctx.chapters, ctx.chapterVideos)
+    const video = project.nodes.find(n => n.type === 'video')!
+    const dropNode = graph.find(n => n.id === `video-drop:${video.id}`)!
+    const chapterGroup = graph.find(n => n.id === project.nodes.find(n => n.type === 'chapter')!.id)!
+
+    const absX = chapterGroup!.position.x + dropNode.position.x + 10
+    const absY = chapterGroup!.position.y + dropNode.position.y + 10
+
+    const target = resolveVideoDropTarget({ x: absX, y: absY }, graph)
+    expect(target).toEqual({ scope: 'video', videoNodeId: video.id })
   })
 })
 
