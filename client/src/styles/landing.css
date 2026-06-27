@@ -366,6 +366,7 @@
 }
 
 .lp-media-preview-link {
+  position: relative;
   display: block;
   text-decoration: none;
   color: inherit;
