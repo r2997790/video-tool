@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { ChevronLeftIcon, ChevronRightIcon } from './icons/uiIcons'
-import flowEditorSvg from '../assets/help/flow-editor.svg?url'
-import publicDemoSvg from '../assets/help/public-demo.svg?url'
+import { DemoViewerMock, FlowBuilderMock } from './HeroShowcaseMocks'
 
 type Callout = {
   text: string
@@ -11,30 +10,30 @@ type Callout = {
 
 type Slide = {
   label: string
-  image: string
   alt: string
+  content: ReactNode
   callouts: Callout[]
 }
 
 const SLIDES: Slide[] = [
   {
     label: 'Build your demo',
-    image: flowEditorSvg,
-    alt: 'Visual flow editor with branching demo paths',
+    alt: 'Visual flow editor with branching demo paths, chapters, and in-video engagement',
+    content: <FlowBuilderMock />,
     callouts: [
-      { text: 'Visual flow editor', top: '22%', left: '8%' },
-      { text: 'Branching paths', top: '18%', left: '52%' },
-      { text: 'No code required', top: '28%', left: '72%' },
+      { text: 'Visual flow editor', top: '18%', left: '12%' },
+      { text: 'Branch by role', top: '12%', left: '42%' },
+      { text: 'In-video engagement', top: '78%', left: '48%' },
     ],
   },
   {
     label: 'Run the experience',
-    image: publicDemoSvg,
-    alt: 'Live demo viewer with chapters and live chat',
+    alt: 'Interactive demo viewer with chapter guides, playing video, and live chat',
+    content: <DemoViewerMock />,
     callouts: [
-      { text: 'Chapter walkthroughs', top: '14%', left: '4%' },
-      { text: 'Interactive video', top: '48%', left: '38%' },
-      { text: 'Live chat & AI', top: '12%', left: '82%' },
+      { text: 'Chapter guides', top: '22%', left: '10%' },
+      { text: 'Product in motion', top: '42%', left: '48%' },
+      { text: 'Live chat & AI', top: '18%', left: '88%' },
     ],
   },
 ]
@@ -111,7 +110,9 @@ export function HeroProductShowcase() {
               className={`lp-hero-showcase-slide${i === activeIndex ? ' is-active' : ''}`}
               aria-hidden={i !== activeIndex}
             >
-              <img src={s.image} alt={s.alt} className="lp-hero-showcase-img" />
+              <div className="lp-hero-showcase-ui" role="img" aria-label={s.alt}>
+                {s.content}
+              </div>
               <div className="lp-hero-showcase-callouts" aria-hidden>
                 {s.callouts.map(c => (
                   <div

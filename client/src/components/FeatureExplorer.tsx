@@ -148,10 +148,6 @@ export function FeatureExplorer({ features }: FeatureExplorerProps) {
               <CancelIcon />
             </button>
 
-            <p className="lp-feature-nav-counter" aria-live="polite">
-              Feature {activeIndex + 1} of {features.length}
-            </p>
-
             <div className="lp-feature-expanded-inner">
               <div className="lp-feature-expanded-copy">
                 <div className="lp-feature-icon">
