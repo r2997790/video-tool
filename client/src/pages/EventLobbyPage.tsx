@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { api, getSessionId } from '../api'
 import type { EventPrivacyNotice, Gate, GateQuestion, ScheduledEventPublic } from '../types'
+import { CheckIcon } from '../components/icons/uiIcons'
+import '../styles/admin.css'
 import { eventHasStarted, formatCountdown, useEventCountdown } from '../utils/eventCountdown'
 
 const EMAIL_KEY_PREFIX = 'videotool_event_email_'
@@ -142,7 +144,8 @@ export function EventLobbyPage() {
               </div>
             )}
             {regError && <p className="vd-event-error">{regError}</p>}
-            <button type="submit" className="admin-btn admin-btn-primary" disabled={registering}>
+            <button type="submit" className="admin-btn admin-btn-primary btn-with-icon" disabled={registering}>
+              <CheckIcon />
               {registering ? 'Submitting…' : 'Register'}
             </button>
           </form>

@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" role="img" aria-label="Public demo viewer">
+  <rect width="800" height="450" fill="#252b33"/>
+  <rect x="0" y="0" width="140" height="450" fill="#2f3640"/>
+  <text x="16" y="32" fill="#5CF8D0" font-family="system-ui,sans-serif" font-size="12" font-weight="700">Demo Studio</text>
+  <rect x="12" y="48" width="116" height="24" rx="4" fill="#3d4654"/>
+  <text x="20" y="64" fill="#fff" font-family="system-ui,sans-serif" font-size="10">1. Introduction</text>
+  <rect x="12" y="80" width="116" height="24" rx="4" fill="#1e2430" stroke="#5CF8D0"/>
+  <text x="20" y="96" fill="#5CF8D0" font-family="system-ui,sans-serif" font-size="10">2. Features</text>
+  <rect x="12" y="112" width="116" height="24" rx="4" fill="#3d4654"/>
+  <text x="20" y="128" fill="#fff" font-family="system-ui,sans-serif" font-size="10">3. Pricing</text>
+  <rect x="152" y="12" width="480" height="340" rx="6" fill="#1a1f26"/>
+  <rect x="152" y="12" width="480" height="24" fill="#151920"/>
+  <circle cx="164" cy="24" r="4" fill="#ff5f57"/>
+  <circle cx="178" cy="24" r="4" fill="#febc2e"/>
+  <circle cx="192" cy="24" r="4" fill="#28c840"/>
+  <rect x="200" y="60" width="384" height="260" rx="4" fill="#2a3140"/>
+  <polygon points="380,180 340,155 340,205" fill="#5CF8D0" opacity="0.7"/>
+  <rect x="152" y="362" width="480" height="8" rx="4" fill="#3d4654"/>
+  <rect x="152" y="362" width="180" height="8" rx="4" fill="#5CF8D0"/>
+  <rect x="644" y="12" width="144" height="426" rx="6" fill="#2f3640"/>
+  <text x="656" y="36" fill="#fff" font-family="system-ui,sans-serif" font-size="11" font-weight="600">Live Chat</text>
+  <rect x="656" y="48" width="120" height="32" rx="6" fill="#252b33"/>
+  <text x="664" y="68" fill="#c8c9cb" font-family="system-ui,sans-serif" font-size="9">Great demo!</text>
+  <rect x="656" y="400" width="120" height="24" rx="4" fill="#1a1f26" stroke="#3d4654"/>
+</svg>

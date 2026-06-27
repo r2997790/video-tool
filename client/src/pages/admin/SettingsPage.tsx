@@ -5,6 +5,7 @@ import { AdminFieldLabel } from '../../components/AdminFieldLabel'
 import { ThemePreview } from '../../components/ThemePreview'
 import { useToast } from '../../components/Toast'
 import { HELP } from '../../adminHelpText'
+import { SaveIcon } from '../../components/icons/uiIcons'
 import { EventAccessSettings } from './EventAccessSettings'
 
 const SETTINGS_TABS = [
@@ -299,7 +300,7 @@ export function SettingsPage() {
       <ThemePreview
         brandName={(config.themeBrandName as string) || 'Your brand'}
         logoUrl={(config.themeLogoUrl as string) || undefined}
-        primaryColor={(config.themePrimaryColor as string) || '#55e6c1'}
+        primaryColor={(config.themePrimaryColor as string) || '#5CF8D0'}
         accentColor={(config.themeAccentColor as string) || '#6c5ce7'}
         backgroundColor={(config.themeBackgroundColor as string) || '#000'}
         surfaceColor={(config.themeSurfaceColor as string) || '#111213'}
@@ -352,7 +353,8 @@ export function SettingsPage() {
 
       <div className={`admin-save-bar${dirty ? ' is-dirty' : ''}`}>
         <span>{dirty ? 'Unsaved changes' : 'All changes saved'}</span>
-        <button type="button" className="admin-btn admin-btn-primary" onClick={save} disabled={!dirty || saving}>
+        <button type="button" className="admin-btn admin-btn-primary btn-with-icon" onClick={save} disabled={!dirty || saving}>
+          <SaveIcon />
           {saving ? 'Saving…' : 'Save settings'}
         </button>
       </div>

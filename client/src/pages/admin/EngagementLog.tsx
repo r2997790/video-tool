@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useState } from 'react'
 import { api } from '../../api'
+import { CollapseIcon, ExpandIcon } from '../../components/icons/uiIcons'
 import type { EngagementSession } from '../../types'
 
 function formatDuration(seconds: number) {
@@ -62,7 +63,8 @@ export function EngagementLog({ eventId, flowSlug = 'default' }: EngagementLogPr
                   <td>{s.flowSteps}</td>
                   <td>{formatDate(s.lastActivity)}</td>
                   <td>
-                    <button className="admin-btn admin-btn-sm" onClick={() => setExpanded(expanded === s.sessionId ? null : s.sessionId)}>
+                    <button className="admin-btn admin-btn-sm btn-with-icon" onClick={() => setExpanded(expanded === s.sessionId ? null : s.sessionId)}>
+                      {expanded === s.sessionId ? <CollapseIcon /> : <ExpandIcon />}
                       {expanded === s.sessionId ? 'Hide' : 'Events'}
                     </button>
                   </td>

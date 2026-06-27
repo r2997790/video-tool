@@ -1,6 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../../../api'
 import type { EventAttendee } from '../../../types'
+import {
+  ApproveIcon,
+  DownloadIcon,
+  ImportIcon,
+  PendingIcon,
+  PlusIcon,
+  RejectIcon,
+} from '../../../components/icons/uiIcons'
 import { useToast } from '../../../components/Toast'
 import { useEventAdmin } from './EventAdminContext'
 
@@ -26,14 +34,23 @@ export function EventAttendeesTab() {
           <option value="approved">Approved</option>
           <option value="rejected">Rejected</option>
         </select>
-        <button type="button" className="admin-btn admin-btn-sm" onClick={() => csvInputRef.current?.click()}>Import CSV</button>
-        <button type="button" className="admin-btn admin-btn-sm" onClick={() => api.exportEventAttendeesCsv(eventId)}>Export CSV</button>
-        <button type="button" className="admin-btn admin-btn-sm" onClick={async () => {
+        <button type="button" className="admin-btn admin-btn-sm btn-with-icon" onClick={() => csvInputRef.current?.click()}>
+          <ImportIcon />
+          Import CSV
+        </button>
+        <button type="button" className="admin-btn admin-btn-sm btn-with-icon" onClick={() => api.exportEventAttendeesCsv(eventId)}>
+          <DownloadIcon />
+          Export CSV
+        </button>
+        <button type="button" className="admin-btn admin-btn-sm btn-with-icon" onClick={async () => {
           const email = prompt('Email address')
           if (!email) return
           await api.addEventAttendee(eventId, { email, status: 'approved' })
           loadAttendees()
-        }}>Add attendee</button>
+        }}>
+          <PlusIcon />
+          Add attendee
+        </button>
       </div>
       <input ref={csvInputRef} type="file" accept=".csv,text/csv" hidden onChange={async e => {
         const file = e.target.files?.[0]; e.target.value = ''
@@ -53,9 +70,9 @@ export function EventAttendeesTab() {
               <td>{a.status}</td>
               <td>{a.source}</td>
               <td style={{ display: 'flex', gap: 6 }}>
-                {a.status !== 'approved' && <button type="button" className="admin-btn admin-btn-sm" onClick={async () => { await api.updateEventAttendee(eventId, a.id, { status: 'approved' }); loadAttendees() }}>Approve</button>}
-                {a.status !== 'rejected' && <button type="button" className="admin-btn admin-btn-sm" onClick={async () => { await api.updateEventAttendee(eventId, a.id, { status: 'rejected', rejectedReason: 'Rejected by admin' }); loadAttendees() }}>Reject</button>}
-                {a.status !== 'pending' && <button type="button" className="admin-btn admin-btn-sm" onClick={async () => { await api.updateEventAttendee(eventId, a.id, { status: 'pending' }); loadAttendees() }}>Pending</button>}
+                {a.status !== 'approved' && <button type="button" className="admin-btn admin-btn-sm btn-with-icon" onClick={async () => { await api.updateEventAttendee(eventId, a.id, { status: 'approved' }); loadAttendees() }}><ApproveIcon />Approve</button>}
+                {a.status !== 'rejected' && <button type="button" className="admin-btn admin-btn-sm btn-with-icon" onClick={async () => { await api.updateEventAttendee(eventId, a.id, { status: 'rejected', rejectedReason: 'Rejected by admin' }); loadAttendees() }}><RejectIcon />Reject</button>}
+                {a.status !== 'pending' && <button type="button" className="admin-btn admin-btn-sm btn-with-icon" onClick={async () => { await api.updateEventAttendee(eventId, a.id, { status: 'pending' }); loadAttendees() }}><PendingIcon />Pending</button>}
               </td>
             </tr>
           ))}

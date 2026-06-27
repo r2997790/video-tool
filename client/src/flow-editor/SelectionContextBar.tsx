@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { ChaptersIcon, DeleteIcon, RemoveIcon } from '../components/icons/uiIcons'
 import type { FlowEditorState } from './useFlowEditorState'
 
 interface SelectionContextBarProps {
@@ -59,24 +60,27 @@ export function SelectionContextBar({ state, onDeleteSelection, onBreakLink, onN
           )}
           <button
             type="button"
-            className="admin-btn admin-btn-sm"
+            className="admin-btn admin-btn-sm btn-with-icon"
             disabled={!canNest}
             onClick={() => {
               const chapterId = targetChapterFromSelection || pickChapterId
               if (chapterId) onNestInChapter(chapterId)
             }}
           >
+            <ChaptersIcon />
             Nest in chapter{nestableIds.length > 1 ? ` (${nestableIds.length})` : ''}
           </button>
         </>
       )}
       {hasEdgeSelection && (
-        <button type="button" className="admin-btn admin-btn-danger admin-btn-sm" onClick={onBreakLink}>
+        <button type="button" className="admin-btn admin-btn-danger admin-btn-sm btn-with-icon" onClick={onBreakLink}>
+          <RemoveIcon />
           Break link
         </button>
       )}
       {hasNodeSelection && (
-        <button type="button" className="admin-btn admin-btn-danger admin-btn-sm" onClick={onDeleteSelection}>
+        <button type="button" className="admin-btn admin-btn-danger admin-btn-sm btn-with-icon" onClick={onDeleteSelection}>
+          <DeleteIcon />
           Delete {selectedNodeIds.length > 1 ? `(${selectedNodeIds.length})` : 'node'}
         </button>
       )}

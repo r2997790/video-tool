@@ -4,6 +4,7 @@ import { api } from '../../api'
 import type { ToasterType } from '../../types'
 import { AdminFieldLabel } from '../../components/AdminFieldLabel'
 import { ConfirmModal } from '../../components/ConfirmModal'
+import { DeleteIcon, PlusIcon } from '../../components/icons/uiIcons'
 import { HELP } from '../../adminHelpText'
 interface ToasterRow {
   id: number
@@ -99,7 +100,10 @@ export function ToastersPage() {
       <p style={{ color: '#9b9d9f', fontSize: 13, marginBottom: 16 }}>
         Popup, banner, graphic, or download prompts during playback.
       </p>
-      <button className="admin-btn" onClick={add} style={{ marginBottom: 16 }}>Add Toaster</button>
+      <button className="admin-btn btn-with-icon" onClick={add} style={{ marginBottom: 16 }}>
+        <PlusIcon />
+        Add Toaster
+      </button>
       <div className="admin-card">
         <table className="admin-table">
           <thead>
@@ -216,7 +220,10 @@ export function ToastersPage() {
                     }} />
                 </td>
                 <td>
-                  <button className="admin-btn admin-btn-danger admin-btn-sm" onClick={() => setDeleteId(t.id)}>Delete</button>
+                  <button className="admin-btn admin-btn-danger admin-btn-sm btn-with-icon" onClick={() => setDeleteId(t.id)}>
+                    <DeleteIcon />
+                    Delete
+                  </button>
                 </td>
               </tr>
             ))}

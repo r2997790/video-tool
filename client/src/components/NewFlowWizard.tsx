@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { CancelIcon, PlusIcon } from '../components/icons/uiIcons'
 import { slugify } from '../utils/slugify'
 
 export type NewFlowWizardResult = {
@@ -70,8 +71,12 @@ export function NewFlowWizard({ open, onClose, onCreate }: NewFlowWizardProps) {
             <p className="admin-field-hint">After creating, you&apos;ll land on the Flow editor (Timeline view) to add chapters, videos, and interactive steps.</p>
           </div>
           <div className="admin-modal-actions">
-            <button type="button" className="admin-btn admin-btn-sm" onClick={onClose}>Cancel</button>
-            <button type="submit" className="admin-btn admin-btn-sm admin-btn-primary" disabled={!name.trim()}>
+            <button type="button" className="admin-btn admin-btn-sm btn-with-icon" onClick={onClose}>
+              <CancelIcon />
+              Cancel
+            </button>
+            <button type="submit" className="admin-btn admin-btn-sm admin-btn-primary btn-with-icon" disabled={!name.trim()}>
+              <PlusIcon />
               Create flow
             </button>
           </div>

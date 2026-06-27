@@ -19,7 +19,8 @@ public static class SchemaMigrator
         {
             await EnsureColumnAsync(conn, "DemoConfigs", "ChapterPickEnabled", "INTEGER NOT NULL DEFAULT 1");
             await EnsureColumnAsync(conn, "DemoConfigs", "PauseEnabled", "INTEGER NOT NULL DEFAULT 1");
-            await EnsureColumnAsync(conn, "DemoConfigs", "ThemePrimaryColor", "TEXT NOT NULL DEFAULT '#77c043'");
+            await EnsureColumnAsync(conn, "DemoConfigs", "ThemePrimaryColor", "TEXT NOT NULL DEFAULT '#5CF8D0'");
+            await BackfillThemeColorsAsync(conn);
             await EnsureColumnAsync(conn, "DemoConfigs", "ThemeAccentColor", "TEXT NOT NULL DEFAULT '#4f8a28'");
             await EnsureColumnAsync(conn, "DemoConfigs", "ThemeBackgroundColor", "TEXT NOT NULL DEFAULT '#0f1011'");
             await EnsureColumnAsync(conn, "DemoConfigs", "ThemeSurfaceColor", "TEXT NOT NULL DEFAULT '#1a1b1d'");
@@ -334,6 +335,18 @@ public static class SchemaMigrator
     {
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = createSql;
+        await cmd.ExecuteNonQueryAsync();
+    }
+
+    private static async Task BackfillThemeColorsAsync(System.Data.Common.DbConnection conn)
+    {
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = """
+            UPDATE "DemoConfigs" SET "ThemePrimaryColor" = '#5CF8D0'
+            WHERE lower("ThemePrimaryColor") IN ('#77c043', '#55e6c1');
+            UPDATE "DemoConfigs" SET "ThemeAccentColor" = '#47dcb0'
+            WHERE lower("ThemeAccentColor") IN ('#4f8a28', '#6c5ce7');
+            """;
         await cmd.ExecuteNonQueryAsync();
     }
 

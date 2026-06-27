@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api, getSessionId } from '../api'
 import type { FlowNode, Gate, GateQuestion, ScheduledEventPublic } from '../types'
 import { Button } from './Button'
+import { CheckIcon } from './icons/uiIcons'
 
 const EMAIL_KEY_PREFIX = 'videotool_event_email_'
 
@@ -101,7 +102,7 @@ export function FlowEventRegistrationOverlay({ node, eventData, onComplete }: Pr
           ))}
           {error && <p className="vd-gate-error">{error}</p>}
           <div className="vd-gate-actions">
-            <Button variant="green" type="submit" disabled={submitting}>
+            <Button variant="green" type="submit" icon={<CheckIcon />} disabled={submitting}>
               {submitting ? 'Registering…' : 'Register'}
             </Button>
           </div>

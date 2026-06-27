@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { api } from '../../api'
 import { AdminFieldLabel } from '../../components/AdminFieldLabel'
 import { ConfirmModal } from '../../components/ConfirmModal'
+import { DeleteIcon, PlusIcon } from '../../components/icons/uiIcons'
 import { HELP } from '../../adminHelpText'
 interface PausePointRow {
   id: number
@@ -85,7 +86,10 @@ export function PausePointsPage() {
       <p style={{ color: '#9b9d9f', fontSize: 13, marginBottom: 16 }}>
         Pause video playback at a timestamp and show a question overlay. Playback resumes after the user answers.
       </p>
-      <button className="admin-btn" onClick={add} style={{ marginBottom: 16 }}>Add Pause Question</button>
+      <button className="admin-btn btn-with-icon" onClick={add} style={{ marginBottom: 16 }}>
+        <PlusIcon />
+        Add Pause Question
+      </button>
       <div className="admin-card">
         <table className="admin-table">
           <thead>
@@ -168,7 +172,10 @@ export function PausePointsPage() {
                     }} />
                 </td>
                 <td>
-                  <button className="admin-btn admin-btn-danger admin-btn-sm" onClick={() => setDeleteId(p.id)}>Delete</button>
+                  <button className="admin-btn admin-btn-danger admin-btn-sm btn-with-icon" onClick={() => setDeleteId(p.id)}>
+                    <DeleteIcon />
+                    Delete
+                  </button>
                 </td>
               </tr>
             ))}

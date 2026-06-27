@@ -12,9 +12,15 @@ export type AdminBranding = {
 const defaults: AdminBranding = {
   brandName: 'Demo Studio',
   logoUrl: '',
-  primaryColor: '#55e6c1',
-  accentColor: '#6c5ce7',
+  primaryColor: '#5CF8D0',
+  accentColor: '#47dcb0',
   loading: true,
+}
+
+function normalizeBrandColor(color: string, fallback: string) {
+  const normalized = color.trim().toLowerCase()
+  if (normalized === '#77c043' || normalized === '#55e6c1') return fallback
+  return color
 }
 
 export function useAdminBranding(): AdminBranding {
@@ -26,8 +32,8 @@ export function useAdminBranding(): AdminBranding {
         setBranding({
           brandName: (cfg.themeBrandName as string) || defaults.brandName,
           logoUrl: (cfg.themeLogoUrl as string) || '',
-          primaryColor: (cfg.themePrimaryColor as string) || defaults.primaryColor,
-          accentColor: (cfg.themeAccentColor as string) || defaults.accentColor,
+          primaryColor: normalizeBrandColor((cfg.themePrimaryColor as string) || defaults.primaryColor, defaults.primaryColor),
+          accentColor: normalizeBrandColor((cfg.themeAccentColor as string) || defaults.accentColor, defaults.accentColor),
           loading: false,
         })
       })

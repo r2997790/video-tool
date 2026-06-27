@@ -22,6 +22,7 @@ import { EventLiveChatPage } from './pages/admin/event/EventLiveChatPage'
 import { EventLeadsPage } from './pages/admin/event/EventLeadsPage'
 import { EventInsightsPage } from './pages/admin/event/EventInsightsPage'
 import { ChangePasswordPage } from './pages/admin/ChangePasswordPage'
+import { HelpPage } from './pages/admin/HelpPage'
 
 function LegacyFlowTabRedirect() {
   const { slug = '' } = useParams<{ slug: string }>()
@@ -47,6 +48,7 @@ export default function App() {
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<Navigate to="flows" replace />} />
             <Route path="settings" element={<SettingsPage />} />
+            <Route path="help" element={<HelpPage />} />
             <Route path="flows" element={<FlowsPage />} />
             <Route path="flows/:slug" element={<FlowLayout />}>
               <Route index element={<FlowEditorPage />} />

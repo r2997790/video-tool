@@ -2,7 +2,7 @@
   --admin-bg: #252b33;
   --admin-surface: #2f3640;
   --admin-border: #3d4654;
-  --admin-accent: #55e6c1;
+  --admin-accent: #5CF8D0;
   --admin-accent-deep: #6c5ce7;
   --admin-danger: #ff7675;
   --font-display: 'Pliant', system-ui, sans-serif;
@@ -41,7 +41,9 @@ html {
 }
 
 .admin-nav a {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   padding: 10px 12px;
   color: #9b9d9f;
   text-decoration: none;
@@ -50,13 +52,20 @@ html {
   margin-bottom: 4px;
 }
 
+.admin-nav a .ui-icon {
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
 .admin-nav a:hover, .admin-nav a.active {
   background: var(--admin-bg);
   color: #fff;
 }
 
 .admin-nav-logout {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   width: 100%;
   padding: 10px 12px;
   margin-top: 4px;
@@ -68,6 +77,11 @@ html {
   font-family: inherit;
   text-align: left;
   cursor: pointer;
+}
+
+.admin-nav-logout .ui-icon {
+  flex-shrink: 0;
+  opacity: 0.85;
 }
 
 .admin-nav-logout:hover {
@@ -228,7 +242,7 @@ a.admin-btn:focus {
 .btn-sm {
   min-height: 30px;
   padding: 6px 12px;
-  font-size: 12px;
+  font-size: var(--admin-text-size);
 }
 
 .admin-login {
@@ -502,7 +516,7 @@ a.admin-btn:focus {
 
 .flow-editor-workflow-nav .admin-flow-tab {
   padding: 6px 12px;
-  font-size: 12px;
+  font-size: var(--admin-text-size);
 }
 
 .flow-live-preview {
@@ -550,13 +564,19 @@ a.admin-btn:focus {
   font-size: var(--admin-text-size);
 }
 
-.admin-btn-with-icon {
+.admin-btn-with-icon,
+.btn-with-icon,
+.lp-btn-with-icon {
   display: inline-flex;
   align-items: center;
   gap: 6px;
 }
 
-.admin-btn-with-icon .toolbar-icon {
+.admin-btn-with-icon .toolbar-icon,
+.admin-btn-with-icon .ui-icon,
+.btn-with-icon .toolbar-icon,
+.btn-with-icon .ui-icon,
+.lp-btn-with-icon .ui-icon {
   flex-shrink: 0;
   opacity: 0.85;
 }
@@ -897,7 +917,7 @@ button.admin-flow-tab {
   border-radius: 8px;
   padding: 10px 14px;
   margin-bottom: 12px;
-  font-size: 12px;
+  font-size: var(--admin-text-size);
   color: #9b9d9f;
   cursor: pointer;
 }
@@ -977,8 +997,132 @@ button.admin-flow-tab {
 .admin-insight-card strong { display: block; font-size: 20px; color: #fff; }
 .admin-insight-card span { font-size: 11px; color: #9b9d9f; text-transform: uppercase; letter-spacing: 0.05em; }
 
-.admin-nav-toggle { display: none; background: none; border: 1px solid var(--admin-border); color: #fff; border-radius: 6px; padding: 8px 12px; cursor: pointer; margin-bottom: 12px; }
 .admin-help-drawer-toggle { margin-left: auto; }
+
+/* Help page */
+.admin-help-page { max-width: 1100px; }
+.admin-help-header { margin-bottom: 32px; }
+.admin-help-header h1 {
+  margin: 0 0 8px;
+  font-size: 24px;
+  color: #fff;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.admin-help-lead {
+  margin: 0;
+  color: #9b9d9f;
+  font-size: var(--admin-text-size);
+  line-height: 1.6;
+  max-width: 640px;
+}
+.admin-help-layout {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 40px;
+  align-items: start;
+}
+.admin-help-toc {
+  position: sticky;
+  top: 24px;
+  padding: 16px;
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+}
+.admin-help-toc-title {
+  margin: 0 0 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #9b9d9f;
+}
+.admin-help-toc ol {
+  margin: 0;
+  padding: 0 0 0 18px;
+  list-style: decimal;
+}
+.admin-help-toc li { margin-bottom: 6px; }
+.admin-help-toc a {
+  color: #c8c9cb;
+  text-decoration: none;
+  font-size: var(--admin-text-size);
+  line-height: 1.4;
+}
+.admin-help-toc a:hover { color: var(--admin-accent); }
+.admin-help-content { min-width: 0; }
+.admin-help-section {
+  margin-bottom: 48px;
+  padding-bottom: 48px;
+  border-bottom: 1px solid var(--admin-border);
+}
+.admin-help-section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+.admin-help-section h2 {
+  margin: 0 0 12px;
+  font-size: 20px;
+  color: #fff;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.admin-help-section h3 {
+  margin: 24px 0 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--admin-accent);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.admin-help-section > p {
+  margin: 0;
+  color: #c8c9cb;
+  line-height: 1.65;
+  max-width: 720px;
+}
+.admin-help-steps,
+.admin-help-bullets,
+.admin-help-links {
+  margin: 0;
+  padding-left: 22px;
+  color: #c8c9cb;
+  line-height: 1.65;
+  max-width: 720px;
+}
+.admin-help-steps li,
+.admin-help-bullets li,
+.admin-help-links li { margin-bottom: 8px; }
+.admin-help-links a { color: var(--admin-accent); text-decoration: none; }
+.admin-help-links a:hover { text-decoration: underline; }
+.admin-help-figure {
+  margin: 24px 0 0;
+  max-width: 800px;
+}
+.admin-help-figure img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  border: 1px solid var(--admin-border);
+  background: var(--admin-bg);
+}
+.admin-help-figure figcaption {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #9b9d9f;
+  line-height: 1.5;
+}
+.admin-help-tip {
+  margin-top: 20px;
+  padding: 14px 16px;
+  background: rgba(92, 248, 208, 0.08);
+  border: 1px solid rgba(92, 248, 208, 0.25);
+  border-radius: 8px;
+  color: #c8c9cb;
+  font-size: var(--admin-text-size);
+  line-height: 1.6;
+  max-width: 720px;
+}
+.admin-help-tip strong { color: var(--admin-accent); }
 
 .admin-login-brand { text-align: center; margin-bottom: 20px; }
 .admin-login-brand img { max-height: 48px; margin-bottom: 8px; }
@@ -988,10 +1132,10 @@ button.admin-flow-tab {
 @keyframes admin-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 
 @media (max-width: 900px) {
-  .admin-nav-toggle { display: block; }
   .admin-layout { flex-direction: column; }
   .admin-nav { width: 100%; border-right: none; border-bottom: 1px solid var(--admin-border); padding: 16px; }
-  .admin-nav.collapsed .admin-nav-links { display: none; }
+  .admin-help-layout { grid-template-columns: 1fr; }
+  .admin-help-toc { position: static; }
   .admin-main { padding: 16px; }
   .admin-table { display: block; overflow-x: auto; }
   .admin-share-url-row { flex-direction: column; align-items: stretch; }
@@ -1080,7 +1224,7 @@ button.admin-flow-tab {
   border: none;
   background: var(--admin-bg);
   color: #9b9d9f;
-  font-size: 12px;
+  font-size: var(--admin-text-size);
   font-family: inherit;
   line-height: 1.2;
   cursor: pointer;

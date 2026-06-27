@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../../api'
+import { DownloadIcon, RefreshIcon } from '../../components/icons/uiIcons'
 import { useToast } from '../../components/Toast'
 
 interface LeadRow {
@@ -72,7 +73,10 @@ export function LeadsPanel({ eventId, flowSlug = 'default' }: LeadsPanelProps) {
         <h2>Leads</h2>
         <div className="admin-card">
           <p className="admin-error">{error}</p>
-          <button type="button" className="admin-btn admin-btn-sm" onClick={load}>Retry</button>
+          <button type="button" className="admin-btn admin-btn-sm btn-with-icon" onClick={load}>
+            <RefreshIcon />
+            Retry
+          </button>
         </div>
       </>
     )
@@ -88,7 +92,10 @@ export function LeadsPanel({ eventId, flowSlug = 'default' }: LeadsPanelProps) {
             {eventId ? ' Showing leads from this event only.' : ''}
           </p>
         </div>
-        <button type="button" className="admin-btn admin-btn-sm" onClick={exportCsv}>Export CSV</button>
+        <button type="button" className="admin-btn admin-btn-sm btn-with-icon" onClick={exportCsv}>
+          <DownloadIcon />
+          Export CSV
+        </button>
       </div>
 
       {leads.length === 0 ? (

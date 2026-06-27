@@ -13,7 +13,7 @@ public class DemoConfig
     public bool ChapterPickEnabled { get; set; } = true;
     public bool PauseEnabled { get; set; } = true;
     public string AiSystemPrompt { get; set; } = string.Empty;
-    public string ThemePrimaryColor { get; set; } = "#77c043";
+    public string ThemePrimaryColor { get; set; } = "#5CF8D0";
     public string ThemeAccentColor { get; set; } = "#4f8a28";
     public string ThemeBackgroundColor { get; set; } = "#0f1011";
     public string ThemeSurfaceColor { get; set; } = "#1a1b1d";

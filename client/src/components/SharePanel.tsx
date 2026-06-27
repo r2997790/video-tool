@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { CopyIcon, ExternalLinkIcon, ShareIcon } from '../components/icons/uiIcons'
 import { AdminMenu } from './AdminMenu'
 import { copyToClipboard, fullPublicUrl } from '../utils/slugify'
 import { useToast } from './Toast'
@@ -22,11 +23,12 @@ export function SharePanel({ slug, isEnabled = true, compact = false }: SharePan
   }
 
   const shareItems = [
-    { id: 'copy', label: 'Copy link', description: 'Copy public demo URL', onClick: () => copy(fullUrl, 'Link') },
+    { id: 'copy', label: 'Copy link', description: 'Copy public demo URL', icon: <CopyIcon />, onClick: () => copy(fullUrl, 'Link') },
     {
       id: 'preview',
       label: 'Open preview',
       description: 'Open demo in a new tab',
+      icon: <ExternalLinkIcon />,
       onClick: () => window.open(publicPath, '_blank'),
     },
     {
@@ -52,7 +54,7 @@ export function SharePanel({ slug, isEnabled = true, compact = false }: SharePan
         <AdminMenu
           align="right"
           items={shareItems}
-          trigger={<button type="button" className="admin-btn admin-btn-sm">Share</button>}
+          trigger={<button type="button" className="admin-btn admin-btn-sm btn-with-icon"><ShareIcon />Share</button>}
         />
       </div>
       {!isEnabled && (

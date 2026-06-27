@@ -11,6 +11,14 @@ import type { FlowLibraryEntry } from '../../flow-editor/flowLibrary'
 import { remapNodeIds } from '../../flow-editor/flowDocument'
 import type { FlowSummary } from '../../types'
 import { copyToClipboard, fullPublicUrl, slugify } from '../../utils/slugify'
+import {
+  CopyIcon,
+  DeleteIcon,
+  DuplicateIcon,
+  EditIcon,
+  LibraryIcon,
+  PlusIcon,
+} from '../../components/icons/uiIcons'
 
 export function FlowsPage() {
   const navigate = useNavigate()
@@ -87,10 +95,14 @@ export function FlowsPage() {
 
   const headerActions = (
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-      <button type="button" className="admin-btn admin-btn-sm" onClick={() => setLibraryOpen(true)}>
+      <button type="button" className="admin-btn admin-btn-sm btn-with-icon" onClick={() => setLibraryOpen(true)}>
+        <LibraryIcon />
         Import from library
       </button>
-      <button type="button" className="admin-btn admin-btn-primary" onClick={() => setWizardOpen(true)}>New flow</button>
+      <button type="button" className="admin-btn admin-btn-primary btn-with-icon" onClick={() => setWizardOpen(true)}>
+        <PlusIcon />
+        New flow
+      </button>
     </div>
   )
 
@@ -137,13 +149,25 @@ export function FlowsPage() {
                 </td>
                 <td>
                   <code style={{ fontSize: 11 }}>{flow.publicUrl}</code>
-                  <button type="button" className="admin-btn admin-btn-sm" style={{ marginLeft: 8 }} onClick={() => copyUrl(flow)}>Copy</button>
+                  <button type="button" className="admin-btn admin-btn-sm btn-with-icon" style={{ marginLeft: 8 }} onClick={() => copyUrl(flow)}>
+                    <CopyIcon />
+                    Copy
+                  </button>
                 </td>
                 <td>{flow.updatedAt ? new Date(flow.updatedAt).toLocaleString() : '—'}</td>
                 <td style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <Link className="admin-btn admin-btn-sm" to={`/admin/flows/${flow.slug}/chapters`}>Edit</Link>
-                  <button type="button" className="admin-btn admin-btn-sm" onClick={() => duplicate(flow)}>Duplicate</button>
-                  <button type="button" className="admin-btn admin-btn-danger admin-btn-sm" onClick={() => setDeleteTarget(flow)}>Delete</button>
+                  <Link className="admin-btn admin-btn-sm btn-with-icon" to={`/admin/flows/${flow.slug}/chapters`}>
+                    <EditIcon />
+                    Edit
+                  </Link>
+                  <button type="button" className="admin-btn admin-btn-sm btn-with-icon" onClick={() => duplicate(flow)}>
+                    <DuplicateIcon />
+                    Duplicate
+                  </button>
+                  <button type="button" className="admin-btn admin-btn-danger admin-btn-sm btn-with-icon" onClick={() => setDeleteTarget(flow)}>
+                    <DeleteIcon />
+                    Delete
+                  </button>
                 </td>
               </tr>
             ))}

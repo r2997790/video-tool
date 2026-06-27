@@ -5,6 +5,7 @@ import { InlineEditableTitle } from '../../components/InlineEditableTitle'
 import { PublishBadge } from '../../components/PublishBadge'
 import { SharePanel } from '../../components/SharePanel'
 import { FlowNameProvider, useFlowName } from '../../flow-editor/FlowNameContext'
+import { BackIcon } from '../../components/icons/uiIcons'
 import type { FlowDetail } from '../../types'
 
 function FlowHeaderTitle() {
@@ -30,8 +31,9 @@ function FlowLayoutContent({
     <>
       <div className="admin-flow-header">
         <div>
-          <Link to="/admin/flows" className="admin-back-link">
-            ← Flow Design
+          <Link to="/admin/flows" className="admin-back-link btn-with-icon">
+            <BackIcon />
+            Flow Design
           </Link>
           <div className="admin-flow-title-row">
             <FlowHeaderTitle />

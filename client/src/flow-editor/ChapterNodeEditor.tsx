@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../api'
 import type { AdminChapter } from '../types'
 import { AdminFieldLabel } from '../components/AdminFieldLabel'
+import { PlusIcon, SaveIcon } from '../components/icons/uiIcons'
 import { FieldHelp } from '../components/FieldHelp'
 import { HELP } from '../adminHelpText'
 
@@ -103,7 +104,10 @@ export function ChapterNodeEditor({ flowSlug, chapterId, chapters, onChapterIdCh
             <option value="">Select chapter…</option>
             {chapters.map(ch => <option key={ch.id} value={ch.id}>{ch.name}</option>)}
           </select>
-          <button type="button" className="admin-btn admin-btn-sm" onClick={createChapter}>New</button>
+          <button type="button" className="admin-btn admin-btn-sm btn-with-icon" onClick={createChapter}>
+            <PlusIcon />
+            New
+          </button>
         </div>
       </AdminFieldLabel>
 
@@ -151,7 +155,8 @@ export function ChapterNodeEditor({ flowSlug, chapterId, chapters, onChapterIdCh
               {' '}Requires gate form
             </label>
           </div>
-          <button type="button" className="admin-btn admin-btn-sm" onClick={saveChapter} disabled={saving}>
+          <button type="button" className="admin-btn admin-btn-sm btn-with-icon" onClick={saveChapter} disabled={saving}>
+            <SaveIcon />
             {saving ? 'Saving…' : 'Save chapter'}
           </button>
         </>

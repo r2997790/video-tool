@@ -4,6 +4,7 @@ import { api } from '../../../api'
 import type { FlowSummary, ScheduledEvent } from '../../../types'
 import { useToast } from '../../../components/Toast'
 import { EventAdminProvider } from './EventAdminContext'
+import { ExternalLinkIcon, LiveIcon } from '../../../components/icons/uiIcons'
 import { eventPayload } from './eventAdminUtils'
 
 const SETUP_TABS = [
@@ -85,9 +86,15 @@ export function EventLayout() {
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {ev.eventKind === 'on_demand' && (
-            <button type="button" className="admin-btn admin-btn-primary admin-btn-sm" onClick={goLive}>Go Live</button>
+            <button type="button" className="admin-btn admin-btn-primary admin-btn-sm btn-with-icon" onClick={goLive}>
+              <LiveIcon />
+              Go Live
+            </button>
           )}
-          <a className="admin-btn admin-btn-sm" href={`/event/${ev.slug}`} target="_blank" rel="noopener noreferrer">Open lobby</a>
+          <a className="admin-btn admin-btn-sm btn-with-icon" href={`/event/${ev.slug}`} target="_blank" rel="noopener noreferrer">
+            <ExternalLinkIcon />
+            Open lobby
+          </a>
         </div>
       </div>
 

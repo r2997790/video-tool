@@ -4,6 +4,7 @@ import { api } from '../../api'
 import { AdminFieldLabel } from '../../components/AdminFieldLabel'
 import { ConfirmModal } from '../../components/ConfirmModal'
 import { HELP } from '../../adminHelpText'
+import { ArrowDownIcon, ArrowUpIcon, DeleteIcon, PlusIcon } from '../../components/icons/uiIcons'
 
 type ShowDurationMode = 'global' | 'show' | 'hide'
 
@@ -90,7 +91,10 @@ export function ChaptersPage() {
   return (
     <>
       <h2>Chapters</h2>
-      <button className="admin-btn" onClick={add} style={{ marginBottom: 16 }}>Add Chapter</button>
+      <button className="admin-btn btn-with-icon" onClick={add} style={{ marginBottom: 16 }}>
+        <PlusIcon />
+        Add Chapter
+      </button>
       <div className="admin-card" style={{ overflowX: 'auto' }}>
         <table className="admin-table">
           <thead>
@@ -111,8 +115,12 @@ export function ChaptersPage() {
             {chapters.map((ch, idx) => (
               <tr key={ch.id}>
                 <td>
-                  <button className="admin-btn admin-btn-sm" onClick={() => move(idx, -1)}>↑</button>
-                  <button className="admin-btn admin-btn-sm" onClick={() => move(idx, 1)}>↓</button>
+                  <button className="admin-btn admin-btn-sm btn-with-icon" onClick={() => move(idx, -1)} aria-label="Move up">
+                    <ArrowUpIcon />
+                  </button>
+                  <button className="admin-btn admin-btn-sm btn-with-icon" onClick={() => move(idx, 1)} aria-label="Move down">
+                    <ArrowDownIcon />
+                  </button>
                 </td>
                 <td>
                   <input className="admin-input" value={ch.name}
@@ -159,7 +167,10 @@ export function ChaptersPage() {
                     }} />
                 </td>
                 <td>
-                  <button className="admin-btn admin-btn-danger admin-btn-sm" onClick={() => setDeleteId(ch.id)}>Delete</button>
+                  <button className="admin-btn admin-btn-danger admin-btn-sm btn-with-icon" onClick={() => setDeleteId(ch.id)}>
+                    <DeleteIcon />
+                    Delete
+                  </button>
                 </td>
               </tr>
             ))}

@@ -4,6 +4,7 @@ import { api } from '../../api'
 import { AdminFieldLabel } from '../../components/AdminFieldLabel'
 import { ConfirmModal } from '../../components/ConfirmModal'
 import { HELP } from '../../adminHelpText'
+import { DeleteIcon, PlusIcon } from '../../components/icons/uiIcons'
 import { FlowWorkflowNav } from '../../flow-editor/FlowWorkflowNav'
 
 interface SeedMsg {
@@ -42,7 +43,10 @@ export function SeedChatPage() {
       <p style={{ color: '#9b9d9f', fontSize: 13, marginBottom: 16 }}>
         These messages appear when Seed Chat is enabled in settings.
       </p>
-      <button className="admin-btn" onClick={add} style={{ marginBottom: 16 }}>Add Message</button>
+      <button className="admin-btn btn-with-icon" onClick={add} style={{ marginBottom: 16 }}>
+        <PlusIcon />
+        Add Message
+      </button>
       <div className="admin-card">
         {messages.map(msg => (
           <div key={msg.id} style={{ marginBottom: 16, paddingBottom: 16, borderBottom: '1px solid #26282a' }}>
@@ -65,7 +69,10 @@ export function SeedChatPage() {
                 onBlur={() => update(messages.find(m => m.id === msg.id)!)}
               />
             </AdminFieldLabel>
-            <button className="admin-btn admin-btn-danger admin-btn-sm" onClick={() => setDeleteId(msg.id)}>Delete</button>
+            <button className="admin-btn admin-btn-danger admin-btn-sm btn-with-icon" onClick={() => setDeleteId(msg.id)}>
+              <DeleteIcon />
+              Delete
+            </button>
           </div>
         ))}
         {messages.length === 0 && <p style={{ color: '#5f6164' }}>No seed messages yet.</p>}

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../../api'
 import { applyAdminBrandingCss, useAdminBranding } from '../../hooks/useAdminBranding'
-import '../../styles/admin.css'
+import { LoginIcon } from '../../components/icons/uiIcons'
 
 export function LoginPage() {
   const [username, setUsername] = useState('')
@@ -45,7 +45,10 @@ export function LoginPage() {
             <label>Password</label>
             <input className="admin-input" type="password" value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password" />
           </div>
-          <button className="admin-btn admin-btn-primary" type="submit" style={{ width: '100%' }}>Sign in</button>
+          <button className="admin-btn admin-btn-primary btn-with-icon" type="submit" style={{ width: '100%' }}>
+            <LoginIcon />
+            Sign in
+          </button>
         </form>
       </div>
     </div>

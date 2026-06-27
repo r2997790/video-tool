@@ -4,6 +4,7 @@ import { api } from '../../api'
 import { useToast } from '../../components/Toast'
 import { applyAdminBrandingCss, useAdminBranding } from '../../hooks/useAdminBranding'
 import { useEffect } from 'react'
+import { SaveIcon } from '../../components/icons/uiIcons'
 import '../../styles/admin.css'
 
 export function ChangePasswordPage() {
@@ -95,7 +96,8 @@ export function ChangePasswordPage() {
               required
             />
           </div>
-          <button className="admin-btn admin-btn-primary" type="submit" style={{ width: '100%' }} disabled={saving}>
+          <button className="admin-btn admin-btn-primary btn-with-icon" type="submit" style={{ width: '100%' }} disabled={saving}>
+            <SaveIcon />
             {saving ? 'Saving…' : 'Update password'}
           </button>
         </form>

@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { CancelIcon } from '../components/icons/uiIcons'
 import { loadFlowLibrary, type FlowLibraryEntry } from '../flow-editor/flowLibrary'
 
 interface FlowLibraryModalProps {
@@ -35,7 +36,10 @@ export function FlowLibraryModal({ open, onClose, onSelect }: FlowLibraryModalPr
           )}
         </div>
         <div className="admin-modal-actions">
-          <button type="button" className="admin-btn admin-btn-sm" onClick={onClose}>Cancel</button>
+          <button type="button" className="admin-btn admin-btn-sm btn-with-icon" onClick={onClose}>
+            <CancelIcon />
+            Cancel
+          </button>
         </div>
       </div>
     </div>

@@ -2,6 +2,7 @@ import type { FlowNode, ScheduledEvent, ToasterType, AdminChapter, AdminChapterV
 import type { BranchAction, FlowBranchRule } from './flowTypes'
 import { ChapterNodeEditor } from './ChapterNodeEditor'
 import { AdminFieldLabel } from '../components/AdminFieldLabel'
+import { DeleteIcon, PlusIcon } from '../components/icons/uiIcons'
 import { FieldHelp } from '../components/FieldHelp'
 import { HELP } from '../adminHelpText'
 import { isVideoAttachType } from './flowRuntime'
@@ -196,10 +197,13 @@ export function FlowNodePropertyPanel({
               </div>
             )
           })}
-          <button type="button" className="admin-btn admin-btn-sm" onClick={() => {
+          <button type="button" className="admin-btn admin-btn-sm btn-with-icon" onClick={() => {
             const rules = [...((selected.parameters.rules as FlowBranchRule[]) || []), { match: '', action: 'question' as BranchAction, targetNodeId: '' }]
             onUpdate({ parameters: { rules } })
-          }}>Add Rule</button>
+          }}>
+            <PlusIcon />
+            Add Rule
+          </button>
           <AdminFieldLabel label="Default webpage URL" help={HELP.flowEditor.branchDefaultUrl}>
             <input className="admin-input" value={(selected.parameters.defaultUrl as string) || ''}
               onChange={e => onUpdate({ parameters: { defaultUrl: e.target.value } })} />
@@ -481,7 +485,10 @@ export function FlowNodePropertyPanel({
           </AdminFieldLabel>        </>
       )}
 
-      <button type="button" className="admin-btn admin-btn-danger admin-btn-sm" onClick={onDelete}>Delete Node</button>
+      <button type="button" className="admin-btn admin-btn-danger admin-btn-sm btn-with-icon" onClick={onDelete}>
+        <DeleteIcon />
+        Delete Node
+      </button>
     </div>
   )
 }

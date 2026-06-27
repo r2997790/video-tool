@@ -1,4 +1,5 @@
 import { api } from '../../../api'
+import { PlusIcon, RefreshIcon } from '../../../components/icons/uiIcons'
 import { AdminFieldLabel } from '../../../components/AdminFieldLabel'
 import { useToast } from '../../../components/Toast'
 import { useEventAdmin } from './EventAdminContext'
@@ -27,10 +28,13 @@ export function EventAccessTab() {
       <AdminFieldLabel label="CRM list key">
         <input className="admin-input" value={ev.crmListKey || ''} placeholder="External list identifier"
           onChange={e => save({ crmListKey: e.target.value })} />
-        <button type="button" className="admin-btn admin-btn-sm" style={{ marginTop: 8 }} onClick={async () => {
+        <button type="button" className="admin-btn admin-btn-sm btn-with-icon" style={{ marginTop: 8 }} onClick={async () => {
           const r = await api.syncEventCrm(ev.id)
           toast.success(`Synced ${r.imported} attendees from CRM`)
-        }}>Sync CRM list</button>
+        }}>
+          <RefreshIcon />
+          Sync CRM list
+        </button>
       </AdminFieldLabel>
       {ev.attendeeWebhookSecret && (
         <p style={{ fontSize: 12, color: '#9b9d9f' }}>
@@ -67,10 +71,13 @@ export function EventAccessTab() {
           <label><input type="checkbox" checked={q.required} onChange={e => updateQuestion(gate, i, { required: e.target.checked }, save)} /> Required</label>
         </div>
       ))}
-      <button type="button" className="admin-btn admin-btn-sm" style={{ marginTop: 12 }} onClick={() => {
+      <button type="button" className="admin-btn admin-btn-sm btn-with-icon" style={{ marginTop: 12 }} onClick={() => {
         const qs = [...gate.questions, { id: `field_${Date.now()}`, label: 'New question', type: 'text', required: false }]
         save({ registrationFormJson: JSON.stringify({ ...gate, questions: qs }) })
-      }}>Add question</button>
+      }}>
+        <PlusIcon />
+        Add question
+      </button>
     </div>
   )
 }

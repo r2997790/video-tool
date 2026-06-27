@@ -1,4 +1,5 @@
 import type { VideoToaster } from '../types'
+import { DownloadIcon } from './icons/uiIcons'
 
 interface Props {
   toaster: VideoToaster
@@ -64,13 +65,14 @@ export function VideoToasterPopup({ toaster, onDismiss, onDownload, onLinkClick 
         {toaster.title && <p className="vd-toaster-title">{toaster.title}</p>}
         <p className="vd-toaster-msg">{toaster.message}</p>
         <a
-          className="vd-toaster-download-btn"
+          className="vd-toaster-download-btn btn-with-icon"
           href={href}
           download={fileName}
           target="_blank"
           rel="noopener noreferrer"
           onClick={() => onDownload?.()}
         >
+          <DownloadIcon />
           Download {fileName}
         </a>
       </div>

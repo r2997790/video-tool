@@ -4,6 +4,7 @@ import { api } from '../../api'
 import type { ChatMsg } from '../../types'
 import { AdminFieldLabel } from '../../components/AdminFieldLabel'
 import { HELP } from '../../adminHelpText'
+import { SendIcon } from '../../components/icons/uiIcons'
 
 interface LiveChatPanelProps {
   eventId?: number
@@ -137,7 +138,10 @@ export function LiveChatPanel({ eventId, flowSlug = 'default' }: LiveChatPanelPr
                       onChange={e => setReply(e.target.value)}
                       onKeyDown={e => e.key === 'Enter' && sendReply()}
                     />
-                    <button className="admin-btn" onClick={sendReply}>Send</button>
+                    <button className="admin-btn btn-with-icon" onClick={sendReply}>
+                      <SendIcon />
+                      Send
+                    </button>
                   </div>
                 </AdminFieldLabel>
               </>

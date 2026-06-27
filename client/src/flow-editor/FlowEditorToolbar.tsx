@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { AdminMenu } from '../components/AdminMenu'
+import { PlusIcon } from '../components/icons/uiIcons'
 import { FLOW_STEPS } from './flowSchema'
 import { FLOW_NODE_COLORS } from './flowNodeColors'
 import {
@@ -81,6 +82,7 @@ export function FlowEditorToolbar({
         label: step.label,
         description: step.desc,
         color: FLOW_NODE_COLORS[type],
+        icon: <PlusIcon />,
         onClick: () => onAddNode(type),
       }
     }),

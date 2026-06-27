@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Button } from '../components/Button'
+import { CancelIcon, CheckIcon } from '../components/icons/uiIcons'
 import type { FlowNode } from '../types'
 import { getNodeHeading, getNodeQuestions, getNodeSubtext, validateFormAnswers } from '../flow-editor/flowRuntime'
 import type { QuestionInputType } from '../flow-editor/flowTypes'
@@ -126,8 +127,8 @@ export function FlowOverlay({ node, onSubmit, onCancel }: FlowOverlayProps) {
           {error && <p className="vd-gate-error">{error}</p>}
         </div>
         <div className="vd-gate-actions">
-          <Button variant="green" onClick={submit}>Continue</Button>
-          {showSkip && <Button variant="ghost-dark" onClick={onCancel}>Skip</Button>}
+          <Button variant="green" icon={<CheckIcon />} onClick={submit}>Continue</Button>
+          {showSkip && <Button variant="ghost-dark" icon={<CancelIcon />} onClick={onCancel}>Skip</Button>}
         </div>
       </div>
     </div>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { api } from '../../api'
+import { ExternalLinkIcon } from '../../components/icons/uiIcons'
 import { FlowWorkflowNav } from '../../flow-editor/FlowWorkflowNav'
 
 export function FlowLivePreviewPage() {
@@ -26,8 +27,9 @@ export function FlowLivePreviewPage() {
           href={previewPath}
           target="_blank"
           rel="noreferrer"
-          className="admin-btn admin-btn-sm"
+          className="admin-btn admin-btn-sm btn-with-icon"
         >
+          <ExternalLinkIcon />
           Open in new tab
         </a>
       </div>

@@ -3,6 +3,7 @@ import { useParams, useSearchParams } from 'react-router-dom'
 import * as signalR from '@microsoft/signalr'
 import { api, getSessionId } from '../api'
 import { Button } from '../components/Button'
+import { CancelIcon, CheckIcon, MessageIcon, RefreshIcon } from '../components/icons/uiIcons'
 import { FlowEventRegistrationOverlay } from '../components/FlowEventRegistrationOverlay'
 import { FlowOverlay } from '../components/FlowOverlay'
 import { VideoPlayer } from '../components/VideoPlayer'
@@ -579,8 +580,14 @@ export function DemoPage() {
           <p className="vd-event-message">{loadError}</p>
           {flowSlug && <p style={{ fontSize: 13, color: '#9b9d9f' }}>Flow: <code>{flowSlug}</code></p>}
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 20, flexWrap: 'wrap' }}>
-            <button type="button" className="btn btn-green btn-sm" onClick={() => { setLoadError(''); setRetryKey(k => k + 1) }}>Retry</button>
-            <a className="btn btn-ghost-dark btn-sm" href="mailto:support@example.com" style={{ textDecoration: 'none' }}>Contact support</a>
+            <button type="button" className="btn btn-green btn-sm btn-with-icon" onClick={() => { setLoadError(''); setRetryKey(k => k + 1) }}>
+              <RefreshIcon />
+              Retry
+            </button>
+            <a className="btn btn-ghost-dark btn-sm btn-with-icon" href="mailto:support@example.com" style={{ textDecoration: 'none' }}>
+              <MessageIcon />
+              Contact support
+            </a>
           </div>
         </div>
       </div>
@@ -768,8 +775,8 @@ export function DemoPage() {
                     {gateError && <p className="vd-gate-error">{gateError}</p>}
                   </div>
                   <div className="vd-gate-actions">
-                    <Button variant="green" onClick={submitGate}>Continue to video</Button>
-                    <Button variant="ghost-dark" onClick={() => setPendingChapter(null)}>Cancel</Button>
+                    <Button variant="green" icon={<CheckIcon />} onClick={submitGate}>Continue to video</Button>
+                    <Button variant="ghost-dark" icon={<CancelIcon />} onClick={() => setPendingChapter(null)}>Cancel</Button>
                   </div>
                 </div>
               </div>

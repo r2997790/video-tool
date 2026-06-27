@@ -5,6 +5,7 @@ export interface AdminMenuItem {
   label: string
   description?: string
   color?: string
+  icon?: ReactNode
   disabled?: boolean
   onClick: () => void
 }
@@ -53,7 +54,7 @@ export function AdminMenu({ trigger, groups, items, align = 'left', onOpenChange
       key={item.id}
       type="button"
       role="menuitem"
-      className="admin-menu-item"
+      className="admin-menu-item btn-with-icon"
       disabled={item.disabled}
       onClick={() => {
         if (item.disabled) return
@@ -61,7 +62,8 @@ export function AdminMenu({ trigger, groups, items, align = 'left', onOpenChange
         setOpenState(false)
       }}
     >
-      {item.color && <span className="admin-menu-item-dot" style={{ background: item.color }} aria-hidden="true" />}
+      {item.icon}
+      {item.color && !item.icon && <span className="admin-menu-item-dot" style={{ background: item.color }} aria-hidden="true" />}
       <span className="admin-menu-item-text">
         <span className="admin-menu-item-label">{item.label}</span>
         {item.description && <span className="admin-menu-item-desc">{item.description}</span>}

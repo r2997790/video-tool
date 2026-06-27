@@ -4,6 +4,18 @@ import { api } from '../../api'
 import type { EventsSummary, FlowSummary, ScheduledEvent } from '../../types'
 import { ConfirmModal } from '../../components/ConfirmModal'
 import { useToast } from '../../components/Toast'
+import {
+  ActivateIcon,
+  CalendarIcon,
+  CancelIcon,
+  DeactivateIcon,
+  DeleteIcon,
+  DuplicateIcon,
+  EditIcon,
+  InstantIcon,
+  RenameIcon,
+  SaveIcon,
+} from '../../components/icons/uiIcons'
 
 function formatDuration(seconds: number) {
   const h = Math.floor(seconds / 3600)
@@ -110,8 +122,14 @@ export function EventsListPage() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
         <h2 style={{ margin: 0 }}>Event Management</h2>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button type="button" className="admin-btn admin-btn-sm" onClick={createInstant}>Instant Event</button>
-          <button type="button" className="admin-btn admin-btn-primary" onClick={createEvent}>New Event</button>
+          <button type="button" className="admin-btn admin-btn-sm btn-with-icon" onClick={createInstant}>
+            <InstantIcon />
+            Instant Event
+          </button>
+          <button type="button" className="admin-btn admin-btn-primary btn-with-icon" onClick={createEvent}>
+            <CalendarIcon />
+            New Event
+          </button>
         </div>
       </div>
 
@@ -158,13 +176,26 @@ export function EventsListPage() {
                   <td>{ev.liveDurationMinutes ? `${ev.liveDurationMinutes}m` : '—'}</td>
                   <td>{next ? new Date(next).toLocaleString() : '—'}</td>
                   <td style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    <Link className="admin-btn admin-btn-sm" to={`/admin/events/${ev.id}`}>Edit</Link>
-                    <button type="button" className="admin-btn admin-btn-sm" onClick={() => { setRenameId(ev.id); setRenameTitle(ev.title) }}>Rename</button>
-                    <button type="button" className="admin-btn admin-btn-sm" onClick={() => duplicate(ev)}>Duplicate</button>
-                    <button type="button" className="admin-btn admin-btn-sm" onClick={() => toggleEnabled(ev)}>
+                    <Link className="admin-btn admin-btn-sm btn-with-icon" to={`/admin/events/${ev.id}`}>
+                      <EditIcon />
+                      Edit
+                    </Link>
+                    <button type="button" className="admin-btn admin-btn-sm btn-with-icon" onClick={() => { setRenameId(ev.id); setRenameTitle(ev.title) }}>
+                      <RenameIcon />
+                      Rename
+                    </button>
+                    <button type="button" className="admin-btn admin-btn-sm btn-with-icon" onClick={() => duplicate(ev)}>
+                      <DuplicateIcon />
+                      Duplicate
+                    </button>
+                    <button type="button" className="admin-btn admin-btn-sm btn-with-icon" onClick={() => toggleEnabled(ev)}>
+                      {ev.isEnabled ? <DeactivateIcon /> : <ActivateIcon />}
                       {ev.isEnabled ? 'Deactivate' : 'Activate'}
                     </button>
-                    <button type="button" className="admin-btn admin-btn-danger admin-btn-sm" onClick={() => setDeleteId(ev.id)}>Delete</button>
+                    <button type="button" className="admin-btn admin-btn-danger admin-btn-sm btn-with-icon" onClick={() => setDeleteId(ev.id)}>
+                      <DeleteIcon />
+                      Delete
+                    </button>
                   </td>
                 </tr>
               )
@@ -183,8 +214,14 @@ export function EventsListPage() {
             <h3>Rename event</h3>
             <input className="admin-input" value={renameTitle} onChange={e => setRenameTitle(e.target.value)} />
             <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-              <button type="button" className="admin-btn admin-btn-primary" onClick={saveRename}>Save</button>
-              <button type="button" className="admin-btn" onClick={() => setRenameId(null)}>Cancel</button>
+              <button type="button" className="admin-btn admin-btn-primary btn-with-icon" onClick={saveRename}>
+                <SaveIcon />
+                Save
+              </button>
+              <button type="button" className="admin-btn btn-with-icon" onClick={() => setRenameId(null)}>
+                <CancelIcon />
+                Cancel
+              </button>
             </div>
           </div>
         </div>

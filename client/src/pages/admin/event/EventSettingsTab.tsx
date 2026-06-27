@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { api } from '../../../api'
 import { AdminFieldLabel } from '../../../components/AdminFieldLabel'
 import { HELP } from '../../../adminHelpText'
+import { UploadIcon, VideoIcon } from '../../../components/icons/uiIcons'
 import { useEventAdmin } from './EventAdminContext'
 
 export function EventSettingsTab() {
@@ -55,8 +56,14 @@ export function EventSettingsTab() {
         save({ holdingVideoUrl: url, holdingVideoType: 'direct' })
       }} />
       <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-        <button type="button" className="admin-btn admin-btn-sm" onClick={() => imageInputRef.current?.click()}>Upload image</button>
-        <button type="button" className="admin-btn admin-btn-sm" onClick={() => videoInputRef.current?.click()}>Upload video</button>
+        <button type="button" className="admin-btn admin-btn-sm btn-with-icon" onClick={() => imageInputRef.current?.click()}>
+          <UploadIcon />
+          Upload image
+        </button>
+        <button type="button" className="admin-btn admin-btn-sm btn-with-icon" onClick={() => videoInputRef.current?.click()}>
+          <VideoIcon />
+          Upload video
+        </button>
       </div>
       <AdminFieldLabel label="Image URL" help={HELP.events.holdingImageUrl}>
         <input className="admin-input" value={ev.holdingImageUrl || ''} onChange={e => setEv({ ...ev, holdingImageUrl: e.target.value })} onBlur={() => save({ holdingImageUrl: ev.holdingImageUrl })} />

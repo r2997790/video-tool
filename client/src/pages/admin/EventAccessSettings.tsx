@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../../api'
 import type { AccessListEntry, PrivacyPolicyRegion } from '../../types'
 import { AdminFieldLabel } from '../../components/AdminFieldLabel'
+import { PlusIcon, RemoveIcon, SaveIcon } from '../../components/icons/uiIcons'
 import { useToast } from '../../components/Toast'
 
 export function EventAccessSettings() {
@@ -57,7 +58,10 @@ export function EventAccessSettings() {
             onChange={e => setNewEntry(n => ({ ...n, value: e.target.value }))} />
           <input className="admin-input" placeholder="Note" value={newEntry.note}
             onChange={e => setNewEntry(n => ({ ...n, note: e.target.value }))} />
-          <button type="button" className="admin-btn admin-btn-sm" onClick={addEntry}>Add</button>
+          <button type="button" className="admin-btn admin-btn-sm btn-with-icon" onClick={addEntry}>
+            <PlusIcon />
+            Add
+          </button>
         </div>
         <table className="admin-table">
           <thead><tr><th>Type</th><th>Match</th><th>Value</th><th>Note</th><th></th></tr></thead>
@@ -68,7 +72,7 @@ export function EventAccessSettings() {
                 <td>{e.matchType}</td>
                 <td>{e.value}</td>
                 <td>{e.note ?? '—'}</td>
-                <td><button type="button" className="admin-btn admin-btn-danger admin-btn-sm" onClick={() => removeEntry(e.id)}>Remove</button></td>
+                <td><button type="button" className="admin-btn admin-btn-danger admin-btn-sm btn-with-icon" onClick={() => removeEntry(e.id)}><RemoveIcon />Remove</button></td>
               </tr>
             ))}
           </tbody>
@@ -94,7 +98,8 @@ export function EventAccessSettings() {
               <input className="admin-input" value={region.policyUrl ?? ''}
                 onChange={e => setRegions(rs => rs.map(r => r.regionCode === region.regionCode ? { ...r, policyUrl: e.target.value } : r))} />
             </AdminFieldLabel>
-            <button type="button" className="admin-btn admin-btn-sm" onClick={() => saveRegion(regions.find(r => r.regionCode === region.regionCode)!)}>
+            <button type="button" className="admin-btn admin-btn-sm btn-with-icon" onClick={() => saveRegion(regions.find(r => r.regionCode === region.regionCode)!)}>
+              <SaveIcon />
               Save {region.regionCode}
             </button>
           </div>

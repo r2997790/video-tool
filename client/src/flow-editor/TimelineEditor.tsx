@@ -17,6 +17,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { DeleteIcon } from '../components/icons/uiIcons'
 import type { FlowNode } from '../types'
 import { canConnect } from './flowSchema'
 import {
@@ -126,7 +127,8 @@ function SortableEventRow({
         <span className="timeline-event-time">@ {formatSeconds(triggerAt)}</span>
         <span className="timeline-event-kind">{kind}</span>
         <span className="timeline-event-label">{nodeSummary(node)}</span>
-        <button type="button" className="admin-btn admin-btn-sm timeline-row-action" onClick={e => { e.stopPropagation(); onDelete() }}>
+        <button type="button" className="admin-btn admin-btn-sm timeline-row-action btn-with-icon" onClick={e => { e.stopPropagation(); onDelete() }}>
+          <DeleteIcon />
           Delete
         </button>
       </div>
@@ -151,7 +153,8 @@ function StepRow({
     <>
       <span className="timeline-step-type">{node.type}</span>
       <span className="timeline-step-label">{nodeSummary(node)}</span>
-      <button type="button" className="admin-btn admin-btn-sm timeline-row-action" onClick={e => { e.stopPropagation(); onDelete() }}>
+      <button type="button" className="admin-btn admin-btn-sm timeline-row-action btn-with-icon" onClick={e => { e.stopPropagation(); onDelete() }}>
+        <DeleteIcon />
         Delete
       </button>
     </>
@@ -340,7 +343,8 @@ export function TimelineEditor({ state }: TimelineEditorProps) {
             <span className="timeline-chapter-icon">▣</span>
             <span className="timeline-chapter-title">Chapter: {chName}</span>
             {chapterNode && (
-              <button type="button" className="admin-btn admin-btn-sm timeline-row-action" onClick={e => { e.stopPropagation(); deleteNode(chapterNode.id) }}>
+              <button type="button" className="admin-btn admin-btn-sm timeline-row-action btn-with-icon" onClick={e => { e.stopPropagation(); deleteNode(chapterNode.id) }}>
+                <DeleteIcon />
                 Delete
               </button>
             )}
@@ -385,7 +389,8 @@ export function TimelineEditor({ state }: TimelineEditorProps) {
                           <span className="timeline-video-icon">▶</span>
                           <span>Video: {vLabel}</span>
                           {videoNode && (
-                            <button type="button" className="admin-btn admin-btn-sm timeline-row-action" onClick={e => { e.stopPropagation(); deleteNode(videoNode.id) }}>
+                            <button type="button" className="admin-btn admin-btn-sm timeline-row-action btn-with-icon" onClick={e => { e.stopPropagation(); deleteNode(videoNode.id) }}>
+                              <DeleteIcon />
                               Delete
                             </button>
                           )}

@@ -1,3 +1,5 @@
+import { CancelIcon, CheckIcon, DeleteIcon } from './icons/uiIcons'
+
 interface ConfirmModalProps {
   open: boolean
   title: string
@@ -27,12 +29,16 @@ export function ConfirmModal({
         <h3 id="confirm-title" className="admin-modal-title">{title}</h3>
         <p className="admin-modal-message">{message}</p>
         <div className="admin-modal-actions">
-          <button type="button" className="admin-btn admin-btn-sm" onClick={onCancel}>{cancelLabel}</button>
+          <button type="button" className="admin-btn admin-btn-sm btn-with-icon" onClick={onCancel}>
+            <CancelIcon />
+            {cancelLabel}
+          </button>
           <button
             type="button"
-            className={`admin-btn admin-btn-sm${danger ? ' admin-btn-danger' : ' admin-btn-primary'}`}
+            className={`admin-btn admin-btn-sm btn-with-icon${danger ? ' admin-btn-danger' : ' admin-btn-primary'}`}
             onClick={onConfirm}
           >
+            {danger ? <DeleteIcon /> : <CheckIcon />}
             {confirmLabel}
           </button>
         </div>

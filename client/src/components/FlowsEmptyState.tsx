@@ -1,3 +1,5 @@
+import { PlusIcon } from './icons/uiIcons'
+
 interface FlowsEmptyStateProps {
   onCreate: () => void
 }
@@ -30,7 +32,8 @@ export function FlowsEmptyState({ onCreate }: FlowsEmptyStateProps) {
           </li>
         ))}
       </ol>
-      <button type="button" className="admin-btn admin-btn-primary" onClick={onCreate}>
+      <button type="button" className="admin-btn admin-btn-primary btn-with-icon" onClick={onCreate}>
+        <PlusIcon />
         Create your first flow
       </button>
     </div>
