@@ -12,8 +12,8 @@ export type AdminBranding = {
 const defaults: AdminBranding = {
   brandName: 'Demo Studio',
   logoUrl: '',
-  primaryColor: '#77c043',
-  accentColor: '#4f8a28',
+  primaryColor: '#55e6c1',
+  accentColor: '#6c5ce7',
   loading: true,
 }
 

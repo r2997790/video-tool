@@ -108,7 +108,7 @@ export function EventsListPage() {
   return (
     <>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
-        <h2 style={{ margin: 0 }}>Events</h2>
+        <h2 style={{ margin: 0 }}>Event Management</h2>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button type="button" className="admin-btn admin-btn-sm" onClick={createInstant}>Instant Event</button>
           <button type="button" className="admin-btn admin-btn-primary" onClick={createEvent}>New Event</button>

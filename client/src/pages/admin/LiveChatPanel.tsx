@@ -119,7 +119,7 @@ export function LiveChatPanel({ eventId, flowSlug = 'default' }: LiveChatPanelPr
                         maxWidth: '80%',
                       }}>
                         {m.source && m.source !== 'demo' && m.role !== 'user' && (
-                          <span style={{ display: 'block', fontSize: 10, color: '#77c043', textTransform: 'uppercase', marginBottom: 2 }}>
+                          <span style={{ display: 'block', fontSize: 10, color: 'var(--admin-accent)', textTransform: 'uppercase', marginBottom: 2 }}>
                             {m.source}
                           </span>
                         )}

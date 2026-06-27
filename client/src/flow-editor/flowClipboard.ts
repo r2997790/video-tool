@@ -53,7 +53,7 @@ export function pasteClipboard(
     animated: true,
     deletable: true,
     reconnectable: true,
-    style: { stroke: '#77c043', strokeWidth: 1.5 },
+    style: { stroke: '#55e6c1', strokeWidth: 1.5 },
   }))
 
   return { nodes: newNodes, edges: newEdges, idMap }

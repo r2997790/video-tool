@@ -147,7 +147,7 @@ export function ChaptersPage() {
                     <option value="hide">Hide</option>
                   </select>
                 </td>
-                <td style={{ whiteSpace: 'nowrap', color: '#77c043' }}>
+                <td style={{ whiteSpace: 'nowrap', color: 'var(--admin-accent)' }}>
                   {formatWatchTime(ch.totalWatchSeconds ?? 0)}
                 </td>
                 <td>{ch.viewerCount ?? 0}</td>

@@ -299,8 +299,8 @@ export function SettingsPage() {
       <ThemePreview
         brandName={(config.themeBrandName as string) || 'Your brand'}
         logoUrl={(config.themeLogoUrl as string) || undefined}
-        primaryColor={(config.themePrimaryColor as string) || '#77c043'}
-        accentColor={(config.themeAccentColor as string) || '#4f8a28'}
+        primaryColor={(config.themePrimaryColor as string) || '#55e6c1'}
+        accentColor={(config.themeAccentColor as string) || '#6c5ce7'}
         backgroundColor={(config.themeBackgroundColor as string) || '#000'}
         surfaceColor={(config.themeSurfaceColor as string) || '#111213'}
         textColor={(config.themeTextColor as string) || '#fff'}

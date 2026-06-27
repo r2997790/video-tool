@@ -40,8 +40,8 @@ export function AdminLayout() {
   }
 
   const links = [
-    { to: '/admin/flows', label: 'Flows' },
-    { to: '/admin/events', label: 'Events' },
+    { to: '/admin/flows', label: 'Flow Design' },
+    { to: '/admin/events', label: 'Event Management' },
     { to: '/admin/settings', label: 'Settings' },
   ]
 

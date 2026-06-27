@@ -5,10 +5,8 @@ import { ConfirmModal } from '../../components/ConfirmModal'
 import { FlowLibraryModal } from '../../components/FlowLibraryModal'
 import { FlowsEmptyState } from '../../components/FlowsEmptyState'
 import { NewFlowWizard, type NewFlowWizardResult } from '../../components/NewFlowWizard'
-import { PublishBadge } from '../../components/PublishBadge'
+import { LiveOfflineToggle } from '../../components/LiveOfflineToggle'
 import { useToast } from '../../components/Toast'
-import { AdminFieldLabel } from '../../components/AdminFieldLabel'
-import { HELP } from '../../adminHelpText'
 import type { FlowLibraryEntry } from '../../flow-editor/flowLibrary'
 import { remapNodeIds } from '../../flow-editor/flowDocument'
 import type { FlowSummary } from '../../types'
@@ -109,13 +107,13 @@ export function FlowsPage() {
   return (
     <>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
-        <h2 style={{ margin: 0 }}>Flows</h2>
+        <h2 style={{ margin: 0 }}>Flow Design</h2>
         {headerActions}
       </div>
       <div className="admin-scope-banner">
         Each flow is a shareable demo. Add videos under a flow, set status to <strong>Live</strong>, then copy the public link.
       </div>
-      {error && <p style={{ color: '#e05f5f' }}>{error}</p>}
+      {error && <p style={{ color: 'var(--admin-danger)' }}>{error}</p>}
       <div className="admin-card" style={{ padding: 0, overflow: 'hidden' }}>
         <table className="admin-table">
           <thead>
@@ -123,7 +121,6 @@ export function FlowsPage() {
               <th>Name</th>
               <th>Status</th>
               <th>Public URL</th>
-              <th><AdminFieldLabel label="Live" help={HELP.flows.enabled} inline /></th>
               <th>Updated</th>
               <th>Actions</th>
             </tr>
@@ -132,16 +129,15 @@ export function FlowsPage() {
             {flows.map(flow => (
               <tr key={flow.id}>
                 <td>{flow.projectName}</td>
-                <td><PublishBadge isEnabled={flow.isEnabled} /></td>
+                <td>
+                  <LiveOfflineToggle
+                    isLive={flow.isEnabled}
+                    onChange={() => toggle(flow)}
+                  />
+                </td>
                 <td>
                   <code style={{ fontSize: 11 }}>{flow.publicUrl}</code>
                   <button type="button" className="admin-btn admin-btn-sm" style={{ marginLeft: 8 }} onClick={() => copyUrl(flow)}>Copy</button>
-                </td>
-                <td>
-                  <label>
-                    <input type="checkbox" checked={flow.isEnabled} onChange={() => toggle(flow)} />
-                    {' '}{flow.isEnabled ? 'Live' : 'Draft'}
-                  </label>
                 </td>
                 <td>{flow.updatedAt ? new Date(flow.updatedAt).toLocaleString() : '—'}</td>
                 <td style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>

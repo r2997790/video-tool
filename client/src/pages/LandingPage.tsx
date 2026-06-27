@@ -33,8 +33,8 @@ export function LandingPage() {
 
   const brandName = data?.brandName || 'Demo Studio'
   const tagline = data?.tagline || 'Interactive video demos with chapters, live chat, and guided flows.'
-  const primary = data?.primaryColor || '#77c043'
-  const accent = data?.accentColor || '#4f8a28'
+  const primary = data?.primaryColor || '#55e6c1'
+  const accent = data?.accentColor || '#6c5ce7'
 
   useEffect(() => {
     document.documentElement.style.setProperty('--landing-accent', primary)

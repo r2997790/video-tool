@@ -1,10 +1,10 @@
 :root {
-  --font-display: 'Poppins', system-ui, sans-serif;
-  --font-body: 'Poppins', system-ui, sans-serif;
-  --accent-site: #77c043;
-  --accent-deep: #4f8a28;
+  --font-display: 'Boldonse', system-ui, sans-serif;
+  --font-body: 'Cabin', system-ui, sans-serif;
+  --accent-site: #55e6c1;
+  --accent-deep: #6c5ce7;
   --vd-bg: #000;
-  --vd-surface: #111213;
+  --vd-surface: #2f3640;
   --vd-text: #fff;
   --ease: cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -56,7 +56,7 @@ a { color: var(--accent-site); }
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #77c043;
+  color: var(--accent-site);
   margin-bottom: 2px;
 }
 .vd-sidebar-sub {
@@ -160,7 +160,7 @@ a { color: var(--accent-site); }
 }
 .vd-gate-input:focus { border-color: var(--accent-site); }
 .vd-gate-input::placeholder { color: #3a3c40; }
-.vd-gate-error   { font-family: var(--font-body); font-size: 13px; color: #e05f5f; margin: 2px 0 0; }
+.vd-gate-error   { font-family: var(--font-body); font-size: 13px; color: #ff7675; margin: 2px 0 0; }
 .vd-gate-actions { display: flex; gap: 10px; flex-wrap: wrap; }
 
 .vd-chat-messages {

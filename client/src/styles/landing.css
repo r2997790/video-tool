@@ -1,9 +1,11 @@
 :root {
-  --landing-accent: #77c043;
-  --landing-accent-deep: #4f8a28;
+  --landing-accent: #55e6c1;
+  --landing-accent-deep: #6c5ce7;
+  --font-display: 'Boldonse', system-ui, sans-serif;
+  --font-body: 'Cabin', system-ui, sans-serif;
   --landing-bg: #080809;
-  --landing-surface: #121315;
-  --landing-border: #26282a;
+  --landing-surface: #2f3640;
+  --landing-border: #3d4654;
   --landing-text: #f5f5f5;
   --landing-muted: #9b9d9f;
 }
@@ -14,7 +16,7 @@
   justify-content: center;
   min-height: 100dvh;
   color: var(--landing-muted);
-  font-family: var(--font-body, 'Poppins', system-ui, sans-serif);
+  font-family: var(--font-body);
 }
 
 .lp-page {
@@ -23,7 +25,7 @@
   flex-direction: column;
   background: var(--landing-bg);
   color: var(--landing-text);
-  font-family: var(--font-body, 'Poppins', system-ui, sans-serif);
+  font-family: var(--font-body);
 }
 
 .lp-wrap {
