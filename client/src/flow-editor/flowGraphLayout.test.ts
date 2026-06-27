@@ -174,7 +174,7 @@ describe('flowGraphLayout', () => {
     expect(target?.scope === 'chapter' && target.chapterNodeId).toBe(chapter.id)
   })
 
-  it('resolveInsertDropTarget returns null for pause outside video nest', () => {
+  it('resolveInsertDropTarget returns chapter scope for pause below video nest', () => {
     const project = buildChapterFlow()
     const graph = projectToGraph(project, ctx.chapters, ctx.chapterVideos)
     const chapter = project.nodes.find(n => n.type === 'chapter')!
@@ -189,10 +189,10 @@ describe('flowGraphLayout', () => {
       ctx.chapterVideos,
     )
 
-    expect(target).toBeNull()
+    expect(target?.scope).toBe('chapter')
   })
 
-  it('resolveInsertDropTarget returns null for toaster at top level', () => {
+  it('resolveInsertDropTarget returns top scope for toaster outside chapters', () => {
     const project = buildChapterFlow()
     const graph = projectToGraph(project, ctx.chapters, ctx.chapterVideos)
 
@@ -205,7 +205,7 @@ describe('flowGraphLayout', () => {
       ctx.chapterVideos,
     )
 
-    expect(target).toBeNull()
+    expect(target).toEqual({ scope: 'top' })
   })
 
   it('resolveVideoDropTarget hits video drop strip nodes', () => {

@@ -28,6 +28,7 @@ export function useFlowEditorState(flowSlug: string) {
   const [view, setView] = useState<FlowEditorView>(() =>
     (localStorage.getItem(VIEW_KEY) as FlowEditorView) || 'timeline')
   const [saving, setSaving] = useState(false)
+  const [layoutFitToken, setLayoutFitToken] = useState(0)
 
   const editContext = useMemo(
     () => ({ chapters, chapterVideos }),
@@ -131,6 +132,10 @@ export function useFlowEditorState(flowSlug: string) {
     setSelectedEdge(edge)
   }, [])
 
+  const bumpLayoutFit = useCallback(() => {
+    setLayoutFitToken(t => t + 1)
+  }, [])
+
   const importDocument = useCallback((nextProject: FlowProject, nextName?: string) => {
     if (nextName) setProjectName(nextName)
     setProject({ ...nextProject, projectName: nextName ?? projectName })
@@ -167,6 +172,8 @@ export function useFlowEditorState(flowSlug: string) {
     reload,
     refreshVideos,
     importDocument,
+    layoutFitToken,
+    bumpLayoutFit,
   }
 }
 

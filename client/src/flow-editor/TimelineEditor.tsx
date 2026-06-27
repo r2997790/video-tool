@@ -32,7 +32,6 @@ import {
   TOP_LEVEL_STEP_TYPES,
   CHAPTER_INTERSTITIAL_TYPES,
   VIDEO_NEST_TYPES,
-  VIDEO_REQUIRED_ATTACH_TYPES,
   type TimelineRow,
   videoLabel,
 } from './flowTimeline'
@@ -44,7 +43,7 @@ interface TimelineEditorProps {
 }
 
 const BETWEEN_VIDEO_TYPES = CHAPTER_INTERSTITIAL_TYPES
-const TOP_LEVEL_TYPES = new Set<FlowNode['type']>([...TOP_LEVEL_STEP_TYPES, 'chapter'])
+const TOP_LEVEL_TYPES = new Set<FlowNode['type']>([...TOP_LEVEL_STEP_TYPES, 'chapter', 'toaster', 'pause'])
 
 function formatSeconds(s: number): string {
   const m = Math.floor(s / 60)
@@ -470,7 +469,6 @@ export function addNodeWithContext(
 }
 
 export function canDropNodeType(nodeType: FlowNode['type'], zone: 'video' | 'between' | 'top'): boolean {
-  if (VIDEO_REQUIRED_ATTACH_TYPES.has(nodeType)) return zone === 'video'
   if (zone === 'video') return VIDEO_NEST_TYPES.has(nodeType)
   if (zone === 'between') return BETWEEN_VIDEO_TYPES.has(nodeType)
   return TOP_LEVEL_TYPES.has(nodeType)

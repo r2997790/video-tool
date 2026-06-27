@@ -10,7 +10,7 @@ import {
   isManagedSpineConnection,
   rebuildSpineConnections,
   removeNodeFromProject,
-  VIDEO_REQUIRED_ATTACH_TYPES,
+  repairOrphanNodes,
   type TimelineEdit,
 } from './flowTimeline'
 
@@ -44,7 +44,7 @@ function applyAttachPlacement(
   let placement: 'during' | 'between' | undefined
   if (fromNode.type === 'video' || (isVideoAttachType(fromNode.type) && isPlaybackTriggerNode(fromNode, project))) {
     placement = 'during'
-  } else if (!isVideoAttachType(fromNode.type) && !VIDEO_REQUIRED_ATTACH_TYPES.has(toNode.type)) {
+  } else if (!isVideoAttachType(fromNode.type)) {
     placement = 'between'
   }
 
@@ -79,7 +79,6 @@ function shouldRewireAsVideoAttach(
   if (!isVideoAttachType(toNode.type)) return null
   const videoId = resolveVideoForAttachConnect(project, fromNode, fromId)
   if (!videoId) return null
-  if (VIDEO_REQUIRED_ATTACH_TYPES.has(toNode.type)) return videoId
   if (fromNode.type === 'video') return videoId
   if (isPlaybackTriggerNode(fromNode, project)) return videoId
   return null
@@ -138,7 +137,7 @@ export function normalizeFlowProject(
   project: FlowProject,
   ctx: FlowEditContext,
 ): FlowProject {
-  return rebuildSpineConnections(project, ctx.chapters, ctx.chapterVideos)
+  return repairOrphanNodes(project, ctx.chapters, ctx.chapterVideos)
 }
 
 export function applyFlowEdit(

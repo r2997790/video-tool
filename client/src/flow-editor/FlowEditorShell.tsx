@@ -61,6 +61,7 @@ export function FlowEditorShell({ flowSlug }: FlowEditorShellProps) {
 
   const handleAutoArrange = useCallback(() => {
     state.applyEdit({ type: 'autoLayout' })
+    state.bumpLayoutFit()
     toast.success('Flow arranged')
   }, [state, toast])
 

@@ -35,16 +35,13 @@ export type TimelineRow = TimelineStepRow | TimelineChapterRow
 export const TOP_LEVEL_STEP_TYPES = new Set<FlowNode['type']>(['question', 'branch', 'event', 'aichat'])
 
 /** Nested inside chapter blocks only (between videos). */
-export const CHAPTER_INTERSTITIAL_TYPES = new Set<FlowNode['type']>(['question', 'branch', 'event', 'aichat'])
+export const CHAPTER_INTERSTITIAL_TYPES = new Set<FlowNode['type']>(['question', 'branch', 'event', 'aichat', 'pause', 'toaster'])
 
 /** Attached to a video node during playback. */
 export const VIDEO_NEST_TYPES = new Set<FlowNode['type']>(['question', 'pause', 'toaster', 'aichat'])
 
-/** Must be placed on a video (during playback), never on spine or top level. */
-export const VIDEO_REQUIRED_ATTACH_TYPES = new Set<FlowNode['type']>(['pause', 'toaster'])
-
-export const VIDEO_REQUIRED_REJECT_MESSAGE =
-  'Select a video node first, or add a chapter with a video.'
+export const VIDEO_ATTACH_NO_VIDEO_MESSAGE =
+  'Add a video to this chapter first, or drop on the chapter spine.'
 
 /** Types that can be dropped into a chapter group on the visual canvas. */
 export const CHAPTER_NEST_TYPES = new Set<FlowNode['type']>([...CHAPTER_INTERSTITIAL_TYPES, 'video'])
@@ -223,42 +220,7 @@ export type InsertTarget =
   | { scope: 'video'; videoNodeId: string }
   | { scope: 'reject'; message: string }
 
-const NEST_IN_CHAPTER_TYPES = new Set<FlowNode['type']>(['question', 'branch', 'aichat', 'event'])
-
-function isVideoRequiredAttachType(type: FlowNode['type']): boolean {
-  return VIDEO_REQUIRED_ATTACH_TYPES.has(type)
-}
-
-function resolveVideoTargetForAttach(
-  project: FlowProject,
-  selectedNode: FlowNode | null,
-  chapterVideos: AdminChapterVideo[],
-): InsertTarget {
-  if (selectedNode?.type === 'video') {
-    return { scope: 'video', videoNodeId: selectedNode.id }
-  }
-  if (selectedNode && isPlaybackTriggerNode(selectedNode, project)) {
-    const video = findVideoAncestor(project, selectedNode.id)
-    if (video) return { scope: 'video', videoNodeId: video.id }
-  }
-  if (selectedNode) {
-    const chapter = selectedNode.type === 'chapter'
-      ? selectedNode
-      : findChapterAncestor(project, selectedNode.id)
-    if (chapter) {
-      const block = parseChapterBlockForLayout(project, chapter, chapterVideos)
-      const firstVideo = block.segments.find((s): s is TimelineVideoSegment => s.kind === 'video')
-      if (firstVideo) {
-        return { scope: 'video', videoNodeId: firstVideo.nodeId }
-      }
-    }
-  }
-  const videos = project.nodes.filter(n => n.type === 'video')
-  if (videos.length === 1) {
-    return { scope: 'video', videoNodeId: videos[0].id }
-  }
-  return { scope: 'reject', message: VIDEO_REQUIRED_REJECT_MESSAGE }
-}
+const NEST_IN_CHAPTER_TYPES = new Set<FlowNode['type']>(['question', 'branch', 'aichat', 'event', 'pause', 'toaster'])
 
 export function resolveInsertTarget(
   project: FlowProject,
@@ -266,10 +228,6 @@ export function resolveInsertTarget(
   type: FlowNode['type'],
   _chapterVideos: AdminChapterVideo[],
 ): InsertTarget {
-  if (isVideoRequiredAttachType(type)) {
-    return resolveVideoTargetForAttach(project, selectedNode, _chapterVideos)
-  }
-
   if (isVideoAttachType(type)) {
     if (selectedNode?.type === 'video') {
       return { scope: 'video', videoNodeId: selectedNode.id }
@@ -279,6 +237,9 @@ export function resolveInsertTarget(
       if (video) return { scope: 'video', videoNodeId: video.id }
     }
     if (selectedNode) {
+      if (selectedNode.type === 'chapter') {
+        return { scope: 'chapter', chapterNodeId: selectedNode.id }
+      }
       const chapter = findChapterAncestor(project, selectedNode.id)
       if (chapter) {
         const afterSegmentIndex = getAfterSegmentIndexForSelection(project, chapter, selectedNode, _chapterVideos)
@@ -460,7 +421,7 @@ function appendUnvisitedTopLevelRows(
       const row = parseChapterBlockForLayout(project, n, videos)
       markChapterRowVisited(row, visited)
       rows.push(row)
-    } else if (isTopLevelStep(n)) {
+    } else if (isTopLevelStep(n) || (isVideoAttachType(n.type) && !findChapterAncestor(project, n.id))) {
       visited.add(n.id)
       rows.push({ kind: 'step', node: n })
     }
@@ -851,7 +812,6 @@ export type TimelineEdit =
   | { type: 'moveToTopLevel'; nodeId: string }
 
 export function canNestInChapter(node: FlowNode): boolean {
-  if (VIDEO_REQUIRED_ATTACH_TYPES.has(node.type)) return false
   return isChapterInterstitial(node) || node.type === 'video'
 }
 
@@ -1005,7 +965,7 @@ export function applyTimelineEdit(
     }
     case 'moveToTopLevel': {
       const node = project.nodes.find(n => n.id === edit.nodeId)
-      if (!node || (!isTopLevelStep(node) && node.type !== 'video')) return project
+      if (!node || (!isTopLevelStep(node) && node.type !== 'video' && !isVideoAttachType(node.type))) return project
       let next = removeNodeFromProject(project, edit.nodeId)
       next = { ...next, nodes: [...next.nodes, node] }
       next = insertNodeInTimeline(next, chapters, videos, node, { scope: 'top' })
@@ -1046,48 +1006,131 @@ export function autoLayoutProject(
   videos: AdminChapterVideo[],
 ): FlowProject {
   const timeline = projectToTimeline(project, chapters, videos)
-  const nodeById = new Map(project.nodes.map(n => [n.id, n]))
-  let x = 80
-  let y = 80
-
   const nodes = project.nodes.map(n => ({ ...n }))
+
+  const TOP_LEVEL_GAP = 280
+  const CHAPTER_GAP = 120
+  const LAYOUT_X = 80
+  const LAYOUT_Y = 80
 
   const setPos = (id: string, px: number, py: number) => {
     const node = nodes.find(n => n.id === id)
     if (node) {
       node.x = px
       node.y = py
-    } else if (nodeById.has(id)) {
-      const src = nodeById.get(id)!
-      nodes.push({ ...src, x: px, y: py })
     }
   }
 
+  const chapterGroupSize = (row: TimelineChapterRow) => {
+    const maxEvents = row.segments.reduce((m, s) => {
+      if (s.kind !== 'video') return m
+      return Math.max(m, s.events.length)
+    }, 0)
+    const rows = Math.max(1, row.segments.length)
+    const width = 320
+    const height = Math.max(160, 24 * 2 + 48 + rows * 84 + maxEvents * 40)
+    return { width, height }
+  }
+
+  let x = LAYOUT_X
+
   for (const row of timeline) {
     if (row.kind === 'step') {
-      setPos(row.node.id, x, y)
-      x += 220
+      setPos(row.node.id, x, LAYOUT_Y)
+      x += TOP_LEVEL_GAP
       continue
     }
-    if (!row.nodeId.startsWith('synthetic-')) setPos(row.nodeId, x, y)
-    x += 220
-    for (const seg of row.segments) {
-      if (seg.kind === 'step') {
-        setPos(seg.node.id, x, y)
-        x += 200
-        continue
-      }
-      setPos(seg.nodeId, x, y + 40)
-      x += 200
-      for (const ev of seg.events) {
-        setPos(ev.id, x, y + 100)
-        x += 160
-      }
+
+    const size = chapterGroupSize(row)
+    if (!row.nodeId.startsWith('synthetic-')) {
+      setPos(row.nodeId, x, LAYOUT_Y)
     }
+    x += size.width + CHAPTER_GAP
   }
 
   const laidOut = { ...project, nodes }
   return rebuildSpineConnections(laidOut, chapters, videos)
+}
+
+export function collectTimelineNodeIds(
+  project: FlowProject,
+  chapters: AdminChapter[],
+  videos: AdminChapterVideo[],
+): Set<string> {
+  const ids = new Set<string>()
+  for (const row of projectToTimeline(project, chapters, videos)) {
+    if (row.kind === 'step') {
+      ids.add(row.node.id)
+      continue
+    }
+    if (!row.nodeId.startsWith('synthetic-')) ids.add(row.nodeId)
+    for (const seg of row.segments) {
+      if (seg.kind === 'step') {
+        ids.add(seg.node.id)
+      } else {
+        ids.add(seg.nodeId)
+        for (const ev of seg.events) ids.add(ev.id)
+      }
+    }
+  }
+  return ids
+}
+
+export function findOrphanNodes(
+  project: FlowProject,
+  chapters: AdminChapter[],
+  videos: AdminChapterVideo[],
+): FlowNode[] {
+  const timelineIds = collectTimelineNodeIds(project, chapters, videos)
+  return project.nodes.filter(n => !timelineIds.has(n.id))
+}
+
+export function repairOrphanNodes(
+  project: FlowProject,
+  chapters: AdminChapter[],
+  videos: AdminChapterVideo[],
+): FlowProject {
+  let next = project
+  let guard = 0
+
+  while (guard++ < 50) {
+    const orphans = findOrphanNodes(next, chapters, videos)
+    if (orphans.length === 0) break
+
+    let progress = false
+    for (const node of orphans) {
+      const video = findVideoAncestor(next, node.id)
+      if (video && isVideoAttachType(node.type)) {
+        next = applyTimelineEdit(next, {
+          type: 'moveNodeToVideo',
+          nodeId: node.id,
+          videoNodeId: video.id,
+        }, chapters, videos)
+        progress = true
+        continue
+      }
+
+      const chapter = findChapterAncestor(next, node.id)
+      if (chapter && canNestInChapter(node)) {
+        next = applyTimelineEdit(next, {
+          type: 'moveIntoChapter',
+          nodeId: node.id,
+          chapterNodeId: chapter.id,
+        }, chapters, videos)
+        progress = true
+        continue
+      }
+
+      if (isVideoAttachType(node.type) || isTopLevelStep(node) || node.type === 'video') {
+        next = applyTimelineEdit(next, { type: 'moveToTopLevel', nodeId: node.id }, chapters, videos)
+        progress = true
+      }
+    }
+
+    if (!progress) break
+  }
+
+  return rebuildSpineConnections(next, chapters, videos)
 }
 
 export function layoutGraphFromTimeline(

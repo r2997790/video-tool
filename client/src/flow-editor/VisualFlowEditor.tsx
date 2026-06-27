@@ -31,6 +31,7 @@ import {
   resolveInsertDropTarget,
   resolveVideoDropTarget,
 } from './flowGraphLayout'
+import { VIDEO_ATTACH_NO_VIDEO_MESSAGE } from './flowTimeline'
 import { insertNodeAtTarget } from './flowInsert'
 import { getPaletteDragType, VisualNodePalette } from './VisualNodePalette'
 import type { FlowEditorState } from './useFlowEditorState'
@@ -160,9 +161,10 @@ function VisualFlowEditorCanvas({ state }: VisualFlowEditorProps) {
     selectedNodeIds,
     setSelectedNodeIds,
     selectedEdge,
+    layoutFitToken,
   } = state
   const toast = useToast()
-  const { screenToFlowPosition } = useReactFlow()
+  const { screenToFlowPosition, fitView } = useReactFlow()
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
   const [dragOverChapterId, setDragOverChapterId] = useState<string | null>(null)
@@ -174,6 +176,7 @@ function VisualFlowEditorCanvas({ state }: VisualFlowEditorProps) {
   const syncingRef = useRef(false)
   const nodesRef = useRef<Node[]>([])
   const fitViewOnceRef = useRef(false)
+  const lastLayoutFitRef = useRef(0)
   const paletteDragTypeRef = useRef<FlowNode['type'] | null>(null)
 
   const onPaletteDragStart = useCallback((type: FlowNode['type']) => {
@@ -225,6 +228,14 @@ function VisualFlowEditorCanvas({ state }: VisualFlowEditorProps) {
       return n
     })
   }, [project, chapters, chapterVideos, dragOverChapterId, dragOverVideoId, insertionIndex])
+
+  useEffect(() => {
+    if (layoutFitToken === 0 || layoutFitToken === lastLayoutFitRef.current) return
+    lastLayoutFitRef.current = layoutFitToken
+    requestAnimationFrame(() => {
+      fitView({ padding: 0.2, duration: 300, maxZoom: 1 })
+    })
+  }, [layoutFitToken, fitView])
 
   useEffect(() => {
     syncingRef.current = true
@@ -368,7 +379,10 @@ function VisualFlowEditorCanvas({ state }: VisualFlowEditorProps) {
     )
 
     if (!dropTarget) {
-      toast.error(`Cannot place ${nodeType} here`)
+      const msg = (nodeType === 'pause' || nodeType === 'toaster')
+        ? VIDEO_ATTACH_NO_VIDEO_MESSAGE
+        : `Cannot place ${nodeType} here`
+      toast.error(msg)
       return
     }
 

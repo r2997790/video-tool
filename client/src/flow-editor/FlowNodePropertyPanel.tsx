@@ -5,7 +5,6 @@ import { AdminFieldLabel } from '../components/AdminFieldLabel'
 import { FieldHelp } from '../components/FieldHelp'
 import { HELP } from '../adminHelpText'
 import { isVideoAttachType } from './flowRuntime'
-import { VIDEO_REQUIRED_ATTACH_TYPES } from './flowTimeline'
 
 function attachPlacementValue(selected: FlowNode): 'during' | 'between' {
   if (selected.parameters.placement === 'during') return 'during'
@@ -48,7 +47,7 @@ export function FlowNodePropertyPanel({
         <input className="admin-input" value={selected.name} onChange={e => onUpdate({ name: e.target.value })} />
       </AdminFieldLabel>
 
-      {inChapter && isVideoAttachType(selected.type) && !VIDEO_REQUIRED_ATTACH_TYPES.has(selected.type) && (
+      {inChapter && isVideoAttachType(selected.type) && (
         <AdminFieldLabel
           label="Placement"
           help="During video: timed events while playback is in progress. Between videos: a step on the chapter spine before or after videos."

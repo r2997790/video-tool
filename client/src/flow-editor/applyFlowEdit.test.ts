@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { applyFlowEdit } from './applyFlowEdit'
 import { newNode } from './flowSchema'
-import { projectToTimeline, findChapterAncestor, resolveInsertTarget, reorderEventsUnderVideo, collectVideoEvents, VIDEO_REQUIRED_REJECT_MESSAGE } from './flowTimeline'
+import { projectToTimeline, findChapterAncestor, resolveInsertTarget, reorderEventsUnderVideo, collectVideoEvents, collectTimelineNodeIds } from './flowTimeline'
+import { projectToGraph } from './flowGraphLayout'
 import type { FlowProject } from '../types'
 import type { AdminChapter, AdminChapterVideo } from '../types'
 
@@ -258,21 +259,50 @@ describe('applyFlowEdit sync', () => {
     expect(events.map(n => n.name)).toEqual(['Pause A', 'Pause B'])
   })
 
-  it('resolveInsertTarget auto-attaches pause to sole project video when nothing selected', () => {
+  it('resolveInsertTarget allows top-level pause when nothing selected', () => {
     const project = buildChapterFlow()
-    const video = project.nodes.find(n => n.type === 'video')!
     const target = resolveInsertTarget(project, null, 'pause', ctx.chapterVideos)
-    expect(target).toEqual({ scope: 'video', videoNodeId: video.id })
+    expect(target).toEqual({ scope: 'top' })
   })
 
-  it('resolveInsertTarget rejects pause when no video exists', () => {
+  it('resolveInsertTarget allows top-level toaster on empty flow', () => {
     const project: FlowProject = {
       projectName: 'Empty',
       nodes: [newNode('question', 'Start')],
       connections: [],
     }
-    const target = resolveInsertTarget(project, null, 'pause', ctx.chapterVideos)
-    expect(target).toEqual({ scope: 'reject', message: VIDEO_REQUIRED_REJECT_MESSAGE })
+    const target = resolveInsertTarget(project, null, 'toaster', ctx.chapterVideos)
+    expect(target).toEqual({ scope: 'top' })
+  })
+
+  it('insert pause on chapter spine appears in timeline and graph', () => {
+    let project = buildChapterFlow()
+    const chapter = project.nodes.find(n => n.type === 'chapter')!
+    const pause = newNode('pause', 'Spine pause')
+    project = applyFlowEdit(project, {
+      type: 'insert',
+      node: pause,
+      target: { scope: 'chapter', chapterNodeId: chapter.id, afterSegmentIndex: 0 },
+    }, ctx)
+
+    const timelineIds = collectTimelineNodeIds(project, ctx.chapters, ctx.chapterVideos)
+    expect(timelineIds.has(pause.id)).toBe(true)
+    const graph = projectToGraph(project, ctx.chapters, ctx.chapterVideos)
+    expect(graph.some(n => n.id === pause.id)).toBe(true)
+  })
+
+  it('after autoLayout and normalize all nodes are in timeline projection', () => {
+    let project = buildChapterFlow()
+    const video = project.nodes.find(n => n.type === 'video')!
+    const pause = newNode('pause', 'During pause')
+    const toaster = newNode('toaster', 'Tip')
+    project = applyFlowEdit(project, { type: 'insert', node: pause, target: { scope: 'video', videoNodeId: video.id } }, ctx)
+    project = applyFlowEdit(project, { type: 'insert', node: toaster, target: { scope: 'video', videoNodeId: video.id } }, ctx)
+    project = applyFlowEdit(project, { type: 'autoLayout' }, ctx)
+    project = applyFlowEdit(project, { type: 'normalize' }, ctx)
+
+    const timelineIds = collectTimelineNodeIds(project, ctx.chapters, ctx.chapterVideos)
+    expect(timelineIds.size).toBe(project.nodes.length)
   })
 
   it('connectNodes rewires orphan pause onto video event chain', () => {

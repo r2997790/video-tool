@@ -6,9 +6,9 @@ import {
   findChapterAncestor,
   parseChapterBlockForLayout,
   projectToTimeline,
+  findOrphanNodes,
   TOP_LEVEL_DRAG_TYPES,
   VIDEO_NEST_TYPES,
-  VIDEO_REQUIRED_ATTACH_TYPES,
   type ChapterSegment,
   type InsertTarget,
 } from './flowTimeline'
@@ -29,7 +29,7 @@ function segmentNodeId(seg: ChapterSegment): string {
   return seg.kind === 'video' ? seg.nodeId : seg.node.id
 }
 
-function computeChapterGroupSize(segmentCount: number, maxEvents: number): { width: number; height: number } {
+export function computeChapterGroupSize(segmentCount: number, maxEvents: number): { width: number; height: number } {
   const rows = Math.max(1, segmentCount)
   const eventRows = Math.max(0, maxEvents)
   const width = CHAPTER_GROUP_MIN_WIDTH + 40
@@ -58,6 +58,9 @@ function videoSegmentHeight(seg: ChapterSegment): number {
 
 export const VIDEO_DROP_STRIP_HEIGHT = 28
 export const VIDEO_NEST_HIT_PADDING = 20
+
+const LAYOUT_X_START = 80
+const LAYOUT_Y = 80
 
 function resolveVideoNestHit(
   localY: number,
@@ -218,48 +221,25 @@ export function projectToGraph(
     }
   }
 
-  for (const n of project.nodes) {
-    if (placed.has(n.id)) continue
-    const chapterAncestor = findChapterAncestor(project, n.id)
-    if (chapterAncestor) {
+  const orphans = findOrphanNodes(project, chapters, chapterVideos)
+  if (orphans.length > 0) {
+    if (import.meta.env.DEV) {
+      console.warn('Flow nodes not in timeline projection:', orphans.map(n => `${n.type}:${n.name}`))
+    }
+    let orphanX = LAYOUT_X_START
+    const orphanY = LAYOUT_Y + 360
+    for (const n of orphans) {
+      if (placed.has(n.id)) continue
       placed.add(n.id)
       nodes.push({
         id: n.id,
         type: 'flowNode',
-        parentId: chapterAncestor.id,
-        extent: 'parent',
-        position: { x: CHAPTER_GROUP_PADDING, y: CHAPTER_GROUP_PADDING + 40 },
+        position: { x: orphanX, y: orphanY },
         data: { label: n.name, nodeType: n.type, parameters: n.parameters, raw: n },
         draggable: true,
       })
-      continue
+      orphanX += 240
     }
-
-    const videoParent = findVideoParent(project, n.id)
-    if (videoParent) {
-      const chapterAncestor2 = findChapterAncestor(project, videoParent.id)
-      placed.add(n.id)
-      nodes.push({
-        id: n.id,
-        type: 'flowNode',
-        parentId: chapterAncestor2?.id,
-        extent: chapterAncestor2 ? 'parent' : undefined,
-        position: { x: 80, y: 80 },
-        data: { label: n.name, nodeType: n.type, parameters: n.parameters, raw: n },
-        draggable: true,
-      })
-      continue
-    }
-
-    placed.add(n.id)
-    nodes.push({
-      id: n.id,
-      type: 'flowNode',
-      position: { x: n.x ?? topX, y: n.y ?? topY },
-      data: { label: n.name, nodeType: n.type, parameters: n.parameters, raw: n },
-      draggable: true,
-    })
-    topX += 220
   }
 
   return nodes
@@ -270,8 +250,8 @@ export type DropTarget =
   | { scope: 'chapter'; chapterNodeId: string; afterSegmentIndex?: number }
   | { scope: 'video'; videoNodeId: string }
 
-function canInsertAtTop(nodeType: FlowNode['type']): boolean {
-  return !VIDEO_REQUIRED_ATTACH_TYPES.has(nodeType)
+function canInsertAtTop(_nodeType: FlowNode['type']): boolean {
+  return true
 }
 
 function resolveDropAtPosition(
@@ -307,12 +287,9 @@ function resolveDropAtPosition(
       if (videoNodeId) {
         return { scope: 'video', videoNodeId }
       }
-      if (VIDEO_REQUIRED_ATTACH_TYPES.has(nodeType)) {
-        return null
-      }
     }
 
-    if (CHAPTER_NEST_TYPES.has(nodeType)) {
+    if (CHAPTER_NEST_TYPES.has(nodeType) || VIDEO_NEST_TYPES.has(nodeType)) {
       const afterIndex = resolveChapterDropIndex(localY, block.segments)
       return { scope: 'chapter', chapterNodeId: group.id, afterSegmentIndex: afterIndex }
     }
