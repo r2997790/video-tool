@@ -39,7 +39,6 @@ import {
 
 } from '../components/icons/uiIcons'
 
-import { mailtoHref, resolveContactEmail } from '../utils/contactEmail'
 import { trackLandingCta } from '../utils/landingAnalytics'
 
 import '../styles/landing.css'
@@ -252,7 +251,7 @@ const PRICING_TIERS = [
 
     ctaEvent: 'pricing_free_trial' as const,
 
-    ctaTo: '/admin/login',
+    ctaTo: '/signup',
 
     highlights: [
 
@@ -280,7 +279,7 @@ const PRICING_TIERS = [
 
     ctaEvent: 'pricing_starter' as const,
 
-    plan: 'starter' as const,
+    ctaTo: '/checkout/starter',
 
     highlights: [
 
@@ -310,7 +309,7 @@ const PRICING_TIERS = [
 
     ctaEvent: 'pricing_pro' as const,
 
-    plan: 'pro' as const,
+    ctaTo: '/checkout/pro',
 
     highlights: [
 
@@ -342,7 +341,7 @@ const PRICING_TIERS = [
 
     ctaEvent: 'pricing_enterprise' as const,
 
-    salesContact: true,
+    ctaTo: '/sales',
 
     highlights: [
 
@@ -390,8 +389,6 @@ export function LandingPage() {
   const [auth, setAuth] = useState<AuthMeResponse | null>(null)
 
   const [registrationEvent, setRegistrationEvent] = useState<{ slug: string; title: string } | null>(null)
-  const [billingConfigured, setBillingConfigured] = useState(false)
-  const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null)
 
 
 
@@ -408,12 +405,6 @@ export function LandingPage() {
       .then(setAuth)
 
       .catch(() => setAuth({ authenticated: false }))
-
-    api.getBillingConfig()
-
-      .then(config => setBillingConfigured(config.configured))
-
-      .catch(() => setBillingConfigured(false))
 
   }, [])
 
@@ -473,8 +464,6 @@ export function LandingPage() {
 
   const authNav = getAuthNav(auth)
 
-  const salesMailto = mailtoHref(resolveContactEmail(data?.contact, 'sales'))
-
   const resolveDemoExampleUrl = (example: typeof DEMO_EXAMPLES[number]) => {
     const flows = data?.flows ?? []
     const match = flows.find(f => f.slug === example.preferredSlug) ?? flows[0]
@@ -485,17 +474,6 @@ export function LandingPage() {
   const demoExampleCards = DEMO_EXAMPLES
     .map(example => ({ example, url: resolveDemoExampleUrl(example) }))
     .filter((item): item is { example: typeof DEMO_EXAMPLES[number]; url: string } => item.url != null)
-
-  const handleCheckout = async (plan: 'starter' | 'pro') => {
-    setCheckoutLoading(plan)
-    try {
-      const { url } = await api.createCheckoutSession(plan)
-      window.location.href = url
-    } catch {
-      toast.error('Unable to start checkout. Please try again or contact support.')
-      setCheckoutLoading(null)
-    }
-  }
 
 
 
@@ -560,7 +538,7 @@ export function LandingPage() {
               <div className="lp-hero-actions">
 
                 <Link
-                  to="/admin/login"
+                  to="/signup"
                   className="lp-btn lp-btn-primary"
                   onClick={() => trackLandingCta('hero_build_demo')}
                 >
@@ -824,52 +802,13 @@ export function LandingPage() {
 
                   </ul>
 
-                  {'salesContact' in tier && tier.salesContact ? (
-                    salesMailto ? (
-                      <a
-                        href={salesMailto}
-                        className={`lp-btn${tier.featured ? ' lp-btn-primary' : ' lp-btn-ghost'} lp-pricing-cta`}
-                        onClick={() => trackLandingCta('pricing_enterprise')}
-                      >
-                        {tier.cta}
-                      </a>
-                    ) : (
-                      <button
-                        type="button"
-                        className={`lp-btn${tier.featured ? ' lp-btn-primary' : ' lp-btn-ghost'} lp-pricing-cta`}
-                        onClick={() => {
-                          trackLandingCta('pricing_enterprise')
-                          toast.error('Sales contact email is not configured yet. Add it in Admin → Settings → Marketing.')
-                        }}
-                      >
-                        {tier.cta}
-                      </button>
-                    )
-                  ) : 'plan' in tier && tier.plan && billingConfigured ? (
-
-                    <button
-                      type="button"
-                      className={`lp-btn${tier.featured ? ' lp-btn-primary' : ' lp-btn-ghost'} lp-pricing-cta`}
-                      disabled={checkoutLoading === tier.plan}
-                      onClick={() => {
-                        trackLandingCta(tier.ctaEvent)
-                        handleCheckout(tier.plan!)
-                      }}
-                    >
-                      {checkoutLoading === tier.plan ? 'Redirecting…' : tier.cta}
-                    </button>
-
-                  ) : (
-
-                    <Link
-                      to={authNav.to}
-                      className={`lp-btn${tier.featured ? ' lp-btn-primary' : ' lp-btn-ghost'} lp-pricing-cta`}
-                      onClick={() => trackLandingCta(tier.ctaEvent)}
-                    >
-                      {tier.cta}
-                    </Link>
-
-                  )}
+                  <Link
+                    to={tier.ctaTo}
+                    className={`lp-btn${tier.featured ? ' lp-btn-primary' : ' lp-btn-ghost'} lp-pricing-cta`}
+                    onClick={() => trackLandingCta(tier.ctaEvent)}
+                  >
+                    {tier.cta}
+                  </Link>
 
                 </article>
 

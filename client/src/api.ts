@@ -39,6 +39,8 @@ export const api = {
 
   login: (username: string, password: string) =>
     request<{ username: string; mustChangePassword?: boolean }>('/api/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) }),
+  register: (data: { name: string; email: string; company: string; password: string }) =>
+    request<{ username: string; mustChangePassword?: boolean }>('/api/auth/register', { method: 'POST', body: JSON.stringify(data) }),
   logout: () => request('/api/auth/logout', { method: 'POST' }),
   me: () => request<{ authenticated: boolean; username?: string; mustChangePassword?: boolean }>('/api/auth/me'),
   changePassword: (currentPassword: string, newPassword: string) =>
@@ -207,6 +209,20 @@ export const api = {
       }),
     }),
 
+  submitSalesInquiry: (data: {
+    sessionId: string
+    name: string
+    email: string
+    company: string
+    message: string
+    teamSize?: string
+    phone?: string
+  }) =>
+    request<{ id: number }>('/api/demo/sales-inquiry', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
   getScheduledEvent: (slug: string, sessionId?: string, email?: string) => {
     const q = new URLSearchParams()
     if (sessionId) q.set('sessionId', sessionId)
@@ -342,10 +358,14 @@ export const api = {
 
   getBillingConfig: () =>
     request<{ configured: boolean; publishableKey: string | null }>('/api/billing/config'),
-  createCheckoutSession: (plan: 'starter' | 'pro') =>
+  createCheckoutSession: (plan: 'starter' | 'pro', urls?: { successUrl?: string; cancelUrl?: string }) =>
     request<{ url: string }>('/api/billing/checkout', {
       method: 'POST',
-      body: JSON.stringify({ plan }),
+      body: JSON.stringify({
+        plan,
+        successUrl: urls?.successUrl,
+        cancelUrl: urls?.cancelUrl,
+      }),
     }),
 }
 

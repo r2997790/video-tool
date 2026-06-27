@@ -22,8 +22,12 @@ public class LeadNotificationService
         if (!string.IsNullOrWhiteSpace(config.LeadWebhookUrl))
             await PostWebhookAsync(config.LeadWebhookUrl, lead);
 
-        if (!string.IsNullOrWhiteSpace(config.LeadNotifyEmail))
-            await SendEmailAsync(config.LeadNotifyEmail, lead);
+        var notifyEmail = lead.Source == "sales-inquiry" && !string.IsNullOrWhiteSpace(config.SalesEmail)
+            ? config.SalesEmail
+            : config.LeadNotifyEmail;
+
+        if (!string.IsNullOrWhiteSpace(notifyEmail))
+            await SendEmailAsync(notifyEmail, lead);
     }
 
     private async Task PostWebhookAsync(string url, LeadSubmission lead)
@@ -88,7 +92,9 @@ public class LeadNotificationService
 
             using var message = new MailMessage(from, toEmail.Trim())
             {
-                Subject = $"New demo lead — {lead.FlowSlug}",
+                Subject = lead.Source == "sales-inquiry"
+                    ? "New enterprise sales inquiry"
+                    : $"New demo lead — {lead.FlowSlug}",
                 Body = body,
             };
             await client.SendMailAsync(message);

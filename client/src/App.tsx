@@ -27,6 +27,9 @@ import { HelpPage } from './pages/admin/HelpPage'
 import { TermsPage } from './pages/legal/TermsPage'
 import { PrivacyPage } from './pages/legal/PrivacyPage'
 import { GdprPage } from './pages/legal/GdprPage'
+import { CheckoutPage } from './pages/marketing/CheckoutPage'
+import { SalesPage } from './pages/marketing/SalesPage'
+import { SignupPage } from './pages/marketing/SignupPage'
 
 const DemoPage = lazy(() => import('./pages/DemoPage').then(m => ({ default: m.DemoPage })))
 
@@ -56,6 +59,9 @@ export default function App() {
             </Suspense>
           } />
           <Route path="/event/:slug" element={<EventLobbyPage />} />
+          <Route path="/signup" element={<SignupPage />} />
+          <Route path="/checkout/:plan" element={<CheckoutPage />} />
+          <Route path="/sales" element={<SalesPage />} />
           <Route path="/admin/login" element={<LoginPage />} />
           <Route path="/admin/change-password" element={<ChangePasswordPage />} />
           <Route path="/admin" element={<AdminLayout />}>

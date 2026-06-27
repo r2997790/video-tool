@@ -513,6 +513,49 @@ public class DemoController : ControllerBase
 
     }
 
+    [HttpPost("sales-inquiry")]
+    public async Task<IActionResult> SubmitSalesInquiry([FromBody] SalesInquiryRequest req)
+    {
+        if (string.IsNullOrWhiteSpace(req.Name))
+            return BadRequest(new { error = "Name is required." });
+
+        if (string.IsNullOrWhiteSpace(req.Email) || !req.Email.Contains('@'))
+            return BadRequest(new { error = "A valid email is required." });
+
+        if (string.IsNullOrWhiteSpace(req.Company))
+            return BadRequest(new { error = "Company is required." });
+
+        if (string.IsNullOrWhiteSpace(req.Message))
+            return BadRequest(new { error = "Message is required." });
+
+        var answersJson = JsonSerializer.Serialize(new
+        {
+            name = req.Name.Trim(),
+            email = req.Email.Trim(),
+            company = req.Company.Trim(),
+            teamSize = req.TeamSize?.Trim(),
+            phone = req.Phone?.Trim(),
+            message = req.Message.Trim(),
+        });
+
+        var lead = new LeadSubmission
+        {
+            SessionId = string.IsNullOrWhiteSpace(req.SessionId) ? Guid.NewGuid().ToString() : req.SessionId.Trim(),
+            FlowSlug = "landing",
+            Source = "sales-inquiry",
+            AnswersJson = answersJson,
+            CreatedAt = DateTime.UtcNow,
+        };
+
+        _db.LeadSubmissions.Add(lead);
+        await _db.SaveChangesAsync();
+
+        var config = await _db.DemoConfigs.FirstAsync();
+        await _leadNotify.NotifyAsync(config, lead);
+
+        return Ok(new { id = lead.Id });
+    }
+
 
 
     [HttpGet("event/{slug}")]
@@ -950,6 +993,8 @@ public class DemoController : ControllerBase
     public record EngagementEventRequest(string SessionId, string EventType, int? ChapterId, int? ToasterId, string? DataJson, string? FlowSlug = null, string? EventSlug = null, DateTime? EventOccurrenceStartUtc = null, string? ViewerEmail = null);
 
     public record LeadSubmissionRequest(string SessionId, string FlowSlug, string Source, string? AnswersJson, int? ChapterId = null, string? NodeId = null);
+
+    public record SalesInquiryRequest(string Name, string Email, string Company, string Message, string? SessionId = null, string? TeamSize = null, string? Phone = null);
 
     public record EventRegistrationRequest(string SessionId, string Email, string? Name, string? AnswersJson, bool ConsentGiven, string? Locale, string? Timezone);
 

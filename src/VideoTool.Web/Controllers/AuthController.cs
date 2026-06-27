@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using VideoTool.Data;
+using VideoTool.Domain.Entities;
 
 namespace VideoTool.Web.Controllers;
 
@@ -33,6 +34,47 @@ public class AuthController : ControllerBase
         await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
 
         return Ok(new { username = user.Username, mustChangePassword = user.MustChangePassword });
+    }
+
+    [HttpPost("register")]
+    public async Task<IActionResult> Register([FromBody] RegisterRequest req)
+    {
+        if (string.IsNullOrWhiteSpace(req.Name))
+            return BadRequest(new { error = "Name is required." });
+
+        if (string.IsNullOrWhiteSpace(req.Email) || !req.Email.Contains('@'))
+            return BadRequest(new { error = "A valid email is required." });
+
+        if (string.IsNullOrWhiteSpace(req.Company))
+            return BadRequest(new { error = "Company is required." });
+
+        if (string.IsNullOrWhiteSpace(req.Password) || req.Password.Length < 8)
+            return BadRequest(new { error = "Password must be at least 8 characters." });
+
+        var username = req.Email.Trim().ToLowerInvariant();
+        if (await _db.AdminUsers.AnyAsync(u => u.Username == username))
+            return Conflict(new { error = "An account with this email already exists. Sign in instead." });
+
+        var user = new AdminUser
+        {
+            Username = username,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.Password),
+            IsActive = true,
+            MustChangePassword = false,
+        };
+        _db.AdminUsers.Add(user);
+        await _db.SaveChangesAsync();
+
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.Name, user.Username),
+            new(ClaimTypes.NameIdentifier, user.Id.ToString())
+        };
+        var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+        var principal = new ClaimsPrincipal(identity);
+        await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
+
+        return Ok(new { username = user.Username, mustChangePassword = false });
     }
 
     [HttpPost("logout")]
@@ -84,5 +126,6 @@ public class AuthController : ControllerBase
     }
 
     public record LoginRequest(string Username, string Password);
+    public record RegisterRequest(string Name, string Email, string Company, string Password);
     public record ChangePasswordRequest(string CurrentPassword, string NewPassword);
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { api } from '../../api'
 import { applyAdminBrandingCss, useAdminBranding } from '../../hooks/useAdminBranding'
 import { LoginIcon } from '../../components/icons/uiIcons'
@@ -71,6 +71,10 @@ export function LoginPage() {
             Sign in
           </button>
         </form>
+        <p style={{ color: '#9b9d9f', fontSize: 13, margin: '20px 0 0', textAlign: 'center' }}>
+          New to Demo Studio?{' '}
+          <Link to="/signup" style={{ color: 'var(--accent-site)' }}>Start free trial</Link>
+        </p>
       </div>
     </div>
   )
