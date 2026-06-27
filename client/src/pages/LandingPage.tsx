@@ -115,6 +115,7 @@ const LANDING_EVENT_CARDS = [
 const FEATURES: {
   icon: typeof FlowDesignIcon
   title: string
+  featureName: string
   description: string
   preview: FeaturePreviewKind
 }[] = [
@@ -124,6 +125,8 @@ const FEATURES: {
     icon: FlowDesignIcon,
 
     title: 'Show each buyer only what they care about',
+
+    featureName: 'Visual flow editor',
 
     description: 'Drag-and-drop branching paths route viewers by their answers. No code.',
 
@@ -137,6 +140,8 @@ const FEATURES: {
 
     title: 'Buyers always know where they are',
 
+    featureName: 'Chapter-based walkthroughs',
+
     description: 'Structure tours as clear, navigable chapters they can jump between.',
 
     preview: 'chapters',
@@ -148,6 +153,8 @@ const FEATURES: {
     icon: ChatIcon,
 
     title: 'Answer questions the moment they arise',
+
+    featureName: 'Live chat and AI assistance',
 
     description: 'Reply live, or let AI handle the common ones so your team chases high-intent leads.',
 
@@ -161,6 +168,8 @@ const FEATURES: {
 
     title: 'Run webinars that feel like a live keynote',
 
+    featureName: 'Scheduled broadcast events',
+
     description: 'Registration, countdown lobbies, and automatic go-live — on your schedule.',
 
     preview: 'events',
@@ -172,6 +181,8 @@ const FEATURES: {
     icon: DownloadIcon,
 
     title: 'Every lead lands in your CRM',
+
+    featureName: 'Lead capture and webhooks',
 
     description: 'Capture details mid-demo and push them to HubSpot, Slack, or email instantly.',
 
@@ -185,6 +196,8 @@ const FEATURES: {
 
     title: 'Demos that look like your website',
 
+    featureName: 'Fully branded experience',
+
     description: 'Match your logo, colours, and fonts so nothing feels third-party.',
 
     preview: 'branding',
@@ -197,6 +210,8 @@ const FEATURES: {
 
     title: 'Capture intent without pausing the story',
 
+    featureName: 'In-video engagement',
+
     description: 'Timed pop-ups, polls, and content gates — all inside the player.',
 
     preview: 'in-video',
@@ -208,6 +223,8 @@ const FEATURES: {
     icon: MessageIcon,
 
     title: 'Respond from tools you already live in',
+
+    featureName: 'Slack and Teams integration',
 
     description: 'Mirror demo chat into your channels for sales and support.',
 
@@ -613,6 +630,12 @@ export function LandingPage() {
         {demoExampleCards.length > 0 && (
 
           <section className="lp-section lp-section-demos" id="demos">
+
+            <div className="lp-demos-backdrop" aria-hidden="true">
+              <span className="lp-demos-orb lp-demos-orb-a" />
+              <span className="lp-demos-orb lp-demos-orb-b" />
+              <span className="lp-demos-orb lp-demos-orb-c" />
+            </div>
 
             <div className="lp-wrap">
 

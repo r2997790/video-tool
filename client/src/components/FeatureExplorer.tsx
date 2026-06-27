@@ -5,6 +5,7 @@ import { FeatureExamplePreview, type FeaturePreviewKind } from './FeatureExample
 export type FeatureItem = {
   icon: ComponentType
   title: string
+  featureName: string
   description: string
   preview: FeaturePreviewKind
 }
@@ -104,7 +105,7 @@ export function FeatureExplorer({ features }: FeatureExplorerProps) {
 
           return (
             <button
-              key={feature.title}
+              key={feature.featureName}
               type="button"
               ref={el => { cardRefs.current[index] = el }}
               className={`lp-feature-card${isHidden ? ' is-hidden' : ''}${isActive ? ' is-active-source' : ''}`}
@@ -116,6 +117,7 @@ export function FeatureExplorer({ features }: FeatureExplorerProps) {
                 <Icon />
               </div>
               <h3 className="lp-feature-title">{feature.title}</h3>
+              <p className="lp-feature-name">{feature.featureName}</p>
               <p className="lp-feature-desc">{feature.description}</p>
             </button>
           )
@@ -157,6 +159,7 @@ export function FeatureExplorer({ features }: FeatureExplorerProps) {
                   })()}
                 </div>
                 <h3 className="lp-feature-expanded-title">{activeFeature.title}</h3>
+                <p className="lp-feature-expanded-name">{activeFeature.featureName}</p>
                 <p className="lp-feature-expanded-desc">{activeFeature.description}</p>
                 <button type="button" className="lp-feature-expanded-back" onClick={close}>
                   Back to all features
