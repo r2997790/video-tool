@@ -150,7 +150,7 @@ function toReactFlowEdges(connections: FlowProject['connections']): Edge[] {
     animated: true,
     deletable: true,
     reconnectable: true,
-    style: { stroke: '#55e6c1', strokeWidth: 1.5 },
+    style: { stroke: 'var(--admin-accent)', strokeWidth: 1.5 },
   }))
 }
 
@@ -511,7 +511,7 @@ function VisualFlowEditorCanvas({ state }: VisualFlowEditorProps) {
     ...e,
     style: {
       ...e.style,
-      stroke: selectedEdge?.from === e.source && selectedEdge?.to === e.target ? '#f59e0b' : '#55e6c1',
+      stroke: selectedEdge?.from === e.source && selectedEdge?.to === e.target ? '#f59e0b' : 'var(--admin-accent)',
       strokeWidth: selectedEdge?.from === e.source && selectedEdge?.to === e.target ? 3 : 1.5,
     },
   })), [edges, selectedEdge])
@@ -553,7 +553,7 @@ function VisualFlowEditorCanvas({ state }: VisualFlowEditorProps) {
           nodeTypes={nodeTypes}
           colorMode="dark"
         >
-          <Background gap={20} color="#2e3032" />
+          <Background gap={20} color="var(--admin-border)" />
           <Controls />
           <VisualNodePalette
             onPaletteDragStart={onPaletteDragStart}

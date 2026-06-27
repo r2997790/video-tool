@@ -150,7 +150,7 @@ export function FlowEditorToolbar({
           </div>
           <button
             type="button"
-            className="admin-btn admin-btn-with-icon"
+            className="admin-btn admin-btn-primary admin-btn-with-icon"
             onClick={onAutoArrange}
             title="Tidy up node positions on the visual canvas"
           >

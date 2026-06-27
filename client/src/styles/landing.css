@@ -2,7 +2,7 @@
   --landing-accent: #55e6c1;
   --landing-accent-deep: #6c5ce7;
   --landing-danger: #ff7675;
-  --font-display: 'Boldonse', system-ui, sans-serif;
+  --font-display: 'Pliant', system-ui, sans-serif;
   --font-body: 'DM Sans', system-ui, sans-serif;
   --landing-bg: #252b33;
   --landing-surface: #2f3640;
@@ -57,8 +57,7 @@
   font-family: var(--font-display);
   font-size: 18px;
   font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  letter-spacing: -0.02em;
 }
 
 .lp-logo {
@@ -128,8 +127,7 @@
   font-size: clamp(36px, 6vw, 56px);
   line-height: 1.08;
   font-weight: 700;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
+  letter-spacing: -0.03em;
 }
 
 .lp-accent {
@@ -230,8 +228,7 @@
   font-family: var(--font-display);
   font-size: 28px;
   font-weight: 700;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
+  letter-spacing: -0.02em;
 }
 
 .lp-section-sub {
@@ -284,7 +281,6 @@
   font-family: var(--font-display);
   font-size: 18px;
   font-weight: 600;
-  text-transform: uppercase;
 }
 
 .lp-card-meta {
