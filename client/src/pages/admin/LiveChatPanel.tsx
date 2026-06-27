@@ -114,7 +114,7 @@ export function LiveChatPanel({ eventId, flowSlug = 'default' }: LiveChatPanelPr
                         display: 'inline-block',
                         padding: '8px 12px',
                         borderRadius: 8,
-                        background: m.role === 'user' ? 'rgba(119,192,67,0.15)' : '#111213',
+                        background: m.role === 'user' ? 'rgba(85, 230, 193, 0.15)' : 'var(--admin-bg)',
                         fontSize: 13,
                         maxWidth: '80%',
                       }}>

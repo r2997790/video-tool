@@ -1,13 +1,15 @@
 :root {
   --landing-accent: #55e6c1;
   --landing-accent-deep: #6c5ce7;
+  --landing-danger: #ff7675;
   --font-display: 'Boldonse', system-ui, sans-serif;
-  --font-body: 'Cabin', system-ui, sans-serif;
-  --landing-bg: #080809;
+  --font-body: 'DM Sans', system-ui, sans-serif;
+  --landing-bg: #252b33;
   --landing-surface: #2f3640;
   --landing-border: #3d4654;
   --landing-text: #f5f5f5;
   --landing-muted: #9b9d9f;
+  --landing-text-size: 14px;
 }
 
 .lp-loading {
@@ -17,6 +19,7 @@
   min-height: 100dvh;
   color: var(--landing-muted);
   font-family: var(--font-body);
+  font-size: var(--landing-text-size);
 }
 
 .lp-page {
@@ -26,6 +29,7 @@
   background: var(--landing-bg);
   color: var(--landing-text);
   font-family: var(--font-body);
+  font-size: var(--landing-text-size);
 }
 
 .lp-wrap {
@@ -38,7 +42,7 @@
   top: 0;
   z-index: 10;
   border-bottom: 1px solid var(--landing-border);
-  background: rgba(8, 8, 9, 0.85);
+  background: rgba(37, 43, 51, 0.92);
   backdrop-filter: blur(12px);
 }
 
@@ -50,9 +54,11 @@
 }
 
 .lp-brand-name {
+  font-family: var(--font-display);
   font-size: 18px;
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .lp-logo {
@@ -70,7 +76,7 @@
 .lp-nav a {
   color: var(--landing-muted);
   text-decoration: none;
-  font-size: 14px;
+  font-size: var(--landing-text-size);
   font-weight: 500;
   transition: color 140ms;
 }
@@ -102,12 +108,13 @@
   width: 520px;
   height: 520px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(119, 192, 67, 0.18) 0%, transparent 68%);
+  background: radial-gradient(circle, rgba(85, 230, 193, 0.18) 0%, transparent 68%);
   pointer-events: none;
 }
 
 .lp-eyebrow {
   margin: 0 0 16px;
+  font-family: var(--font-display);
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.1em;
@@ -117,10 +124,12 @@
 
 .lp-title {
   margin: 0 0 20px;
+  font-family: var(--font-display);
   font-size: clamp(36px, 6vw, 56px);
   line-height: 1.08;
   font-weight: 700;
-  letter-spacing: -0.03em;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
 
 .lp-accent {
@@ -129,7 +138,7 @@
 
 .lp-subtitle {
   margin: 0 0 32px;
-  font-size: 18px;
+  font-size: 16px;
   line-height: 1.65;
   color: #c8c9cb;
   max-width: 560px;
@@ -148,7 +157,7 @@
   justify-content: center;
   padding: 14px 24px;
   border-radius: 10px;
-  font-size: 15px;
+  font-size: var(--landing-text-size);
   font-weight: 600;
   text-decoration: none;
   transition: transform 140ms, background 140ms, border-color 140ms;
@@ -160,7 +169,7 @@
 
 .lp-btn-primary {
   background: var(--landing-accent);
-  color: #0a0a0a;
+  color: #0d0e0f;
 }
 
 .lp-btn-primary:hover {
@@ -175,7 +184,7 @@
 }
 
 .lp-btn-ghost:hover {
-  border-color: #444;
+  border-color: var(--landing-accent-deep);
   background: var(--landing-surface);
 }
 
@@ -191,7 +200,7 @@
 .lp-features li {
   position: relative;
   padding-left: 18px;
-  font-size: 14px;
+  font-size: var(--landing-text-size);
   color: var(--landing-muted);
 }
 
@@ -218,15 +227,17 @@
 
 .lp-section-title {
   margin: 0 0 8px;
+  font-family: var(--font-display);
   font-size: 28px;
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
 
 .lp-section-sub {
   margin: 0 0 32px;
   color: var(--landing-muted);
-  font-size: 15px;
+  font-size: var(--landing-text-size);
   line-height: 1.6;
 }
 
@@ -251,8 +262,8 @@
 }
 
 .lp-card:hover {
-  border-color: rgba(119, 192, 67, 0.35);
-  background: rgba(119, 192, 67, 0.05);
+  border-color: rgba(85, 230, 193, 0.35);
+  background: rgba(85, 230, 193, 0.05);
   transform: translateY(-2px);
 }
 
@@ -263,20 +274,22 @@
   align-items: center;
   justify-content: center;
   border-radius: 10px;
-  background: rgba(119, 192, 67, 0.12);
+  background: rgba(85, 230, 193, 0.12);
   color: var(--landing-accent);
-  font-size: 14px;
+  font-size: var(--landing-text-size);
 }
 
 .lp-card-title {
   margin: 0;
+  font-family: var(--font-display);
   font-size: 18px;
   font-weight: 600;
+  text-transform: uppercase;
 }
 
 .lp-card-meta {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--landing-text-size);
   color: var(--landing-muted);
   line-height: 1.5;
 }
@@ -284,7 +297,7 @@
 .lp-card-link {
   margin-top: auto;
   padding-top: 8px;
-  font-size: 13px;
+  font-size: var(--landing-text-size);
   font-weight: 600;
   color: var(--landing-accent);
 }
@@ -295,8 +308,9 @@
   right: 16px;
   padding: 4px 10px;
   border-radius: 999px;
-  background: rgba(239, 68, 68, 0.15);
-  color: #f87171;
+  background: rgba(85, 230, 193, 0.15);
+  color: var(--landing-accent);
+  font-family: var(--font-display);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -319,7 +333,7 @@
 }
 
 .lp-error {
-  color: #f87171;
+  color: var(--landing-danger);
   text-align: center;
   padding: 24px 0;
 }
@@ -334,7 +348,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 13px;
+  font-size: var(--landing-text-size);
   color: var(--landing-muted);
 }
 
