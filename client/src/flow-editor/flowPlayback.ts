@@ -63,6 +63,7 @@ function flowNodeToPause(node: FlowNode, chapterId: number | null): FlowPauseTri
     options: options.length ? options : undefined,
     required: p.required !== false,
     placeholder: (p.placeholder as string) || null,
+    timeoutSeconds: (p.timeoutSeconds as number) || 0,
   }
 }
 
@@ -110,7 +111,7 @@ function collectEventsFromVideoNode(flow: FlowProject, videoNodeId: string, chap
   const walk = (nodeId: string) => {
     for (const next of getNextNodes(flow, nodeId)) {
       if (seen.has(next.id)) continue
-      if (!isPlaybackTriggerNode(next, flow)) break
+      if (!isPlaybackTriggerNode(next, flow)) continue
       seen.add(next.id)
       if (next.type === 'toaster') toasters.push(flowNodeToToaster(next, chapterId))
       if (next.type === 'pause') pauses.push(flowNodeToPause(next, chapterId))

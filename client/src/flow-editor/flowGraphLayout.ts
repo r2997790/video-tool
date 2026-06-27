@@ -253,7 +253,7 @@ export type DropTarget =
   | { scope: 'video'; videoNodeId: string }
 
 function canInsertAtTop(nodeType: FlowNode['type']): boolean {
-  return nodeType !== 'pause' && nodeType !== 'toaster'
+  return nodeType !== 'pause'
 }
 
 function resolveDropAtPosition(

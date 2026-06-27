@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { FlowEditorToolbar } from './FlowEditorToolbar'
 import { useFlowName } from './FlowNameContext'
-import { SelectionContextBar } from './SelectionContextBar'
 import { TimelineEditor, addNodeWithContext } from './TimelineEditor'
 import { VisualFlowEditor } from './VisualFlowEditor'
 import { FlowNodePropertyPanel } from './FlowNodePropertyPanel'
@@ -150,9 +149,6 @@ export function FlowEditorShell({ flowSlug }: FlowEditorShellProps) {
         state={state}
         onSave={handleSave}
         onAddNode={handleAddNode}
-      />
-      <SelectionContextBar
-        state={state}
         onDeleteSelection={handleDeleteSelection}
         onBreakLink={handleBreakLink}
         onNestInChapter={handleNestInChapter}

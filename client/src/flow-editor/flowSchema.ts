@@ -121,6 +121,7 @@ export function newNode(type: FlowNode['type'], name?: string): FlowNode {
     },
     pause: {
       triggerAtSeconds: 45,
+      timeoutSeconds: 0,
       prompt: 'What stood out to you?',
       fieldId: 'reflection',
       inputType: 'text',

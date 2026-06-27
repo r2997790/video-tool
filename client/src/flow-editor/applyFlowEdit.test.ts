@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { applyFlowEdit } from './applyFlowEdit'
 import { newNode } from './flowSchema'
-import { projectToTimeline, findChapterAncestor, resolveInsertTarget, reorderEventsUnderVideo } from './flowTimeline'
+import { projectToTimeline, findChapterAncestor, resolveInsertTarget, reorderEventsUnderVideo, collectVideoEvents } from './flowTimeline'
 import type { FlowProject } from '../types'
 import type { AdminChapter, AdminChapterVideo } from '../types'
 
@@ -217,5 +217,50 @@ describe('applyFlowEdit sync', () => {
     expect(next.connections.length).toBe(connCount)
     expect(next.nodes.find(n => n.id === node.id)?.x).toBe(200)
     expect(next.nodes.find(n => n.id === node.id)?.y).toBe(300)
+  })
+
+  it('disconnectEdge removes video to pause event-chain link without restoring it', () => {
+    let project = buildChapterFlow()
+    const video = project.nodes.find(n => n.type === 'video')!
+    const pause = newNode('pause', 'Pause 1')
+    project = applyFlowEdit(project, {
+      type: 'insert',
+      node: pause,
+      target: { scope: 'video', videoNodeId: video.id },
+    }, ctx)
+
+    const pauseNode = project.nodes.find(n => n.name === 'Pause 1')!
+    expect(collectVideoEvents(project, video.id).map(n => n.id)).toContain(pauseNode.id)
+
+    project = applyFlowEdit(project, {
+      type: 'disconnectEdge',
+      from: video.id,
+      to: pauseNode.id,
+    }, ctx)
+
+    expect(project.connections.some(c => c.from === video.id && c.to === pauseNode.id)).toBe(false)
+    expect(collectVideoEvents(project, video.id).map(n => n.id)).not.toContain(pauseNode.id)
+  })
+
+  it('supports multiple pause nodes chained under one video', () => {
+    let project = buildChapterFlow()
+    const video = project.nodes.find(n => n.type === 'video')!
+    const pause1 = newNode('pause', 'Pause A')
+    pause1.parameters = { ...pause1.parameters, triggerAtSeconds: 10 }
+    const pause2 = newNode('pause', 'Pause B')
+    pause2.parameters = { ...pause2.parameters, triggerAtSeconds: 30 }
+
+    project = applyFlowEdit(project, { type: 'insert', node: pause1, target: { scope: 'video', videoNodeId: video.id } }, ctx)
+    project = applyFlowEdit(project, { type: 'insert', node: pause2, target: { scope: 'video', videoNodeId: video.id } }, ctx)
+
+    const events = collectVideoEvents(project, video.id).filter(n => n.type === 'pause')
+    expect(events).toHaveLength(2)
+    expect(events.map(n => n.name)).toEqual(['Pause A', 'Pause B'])
+  })
+
+  it('resolveInsertTarget rejects top-level pause insert', () => {
+    const project = buildChapterFlow()
+    const target = resolveInsertTarget(project, null, 'pause', ctx.chapterVideos)
+    expect(target).toEqual({ scope: 'reject', message: 'Place Pause & Ask on a video (during playback).' })
   })
 })

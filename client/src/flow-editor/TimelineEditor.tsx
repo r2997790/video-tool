@@ -43,7 +43,7 @@ interface TimelineEditorProps {
 }
 
 const BETWEEN_VIDEO_TYPES = CHAPTER_INTERSTITIAL_TYPES
-const TOP_LEVEL_TYPES = new Set<FlowNode['type']>([...TOP_LEVEL_STEP_TYPES, 'chapter'])
+const TOP_LEVEL_TYPES = new Set<FlowNode['type']>([...TOP_LEVEL_STEP_TYPES, 'chapter', 'toaster'])
 
 function formatSeconds(s: number): string {
   const m = Math.floor(s / 60)
@@ -111,7 +111,7 @@ function SortableEventRow({
   onDelete: () => void
 }) {
   const triggerAt = (node.parameters.triggerAtSeconds as number) || 0
-  const kind = node.type === 'pause' ? 'Pause'
+  const kind = node.type === 'pause' ? 'Pause & Ask'
     : node.type === 'toaster' ? 'Pop-up'
     : node.type === 'question' ? 'Question'
     : node.type === 'aichat' ? 'AI Chat'
@@ -377,7 +377,7 @@ export function TimelineEditor({ state }: TimelineEditorProps) {
                       </SortableRowShell>
                       <DropZone
                         id={`video-nest:${seg.nodeId}`}
-                        label={seg.events.length === 0 ? 'Drop pause / question / AI chat / pop-up here' : 'Drop during-video event here'}
+                        label={seg.events.length === 0 ? 'Drop pause & ask / question / toaster / AI chat here' : 'Drop during-video event here'}
                         className="timeline-nested-events"
                       />
                       <SortableContext items={eventIds} strategy={verticalListSortingStrategy}>

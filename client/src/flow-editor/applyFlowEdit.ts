@@ -6,6 +6,7 @@ import {
   applyTimelineEdit,
   autoLayoutProject,
   findChapterAncestor,
+  isManagedSpineConnection,
   rebuildSpineConnections,
   type TimelineEdit,
 } from './flowTimeline'
@@ -94,7 +95,11 @@ export function applyFlowEdit(
       const connections = project.connections.filter(
         c => !(c.from === edit.from && c.to === edit.to),
       )
-      return rebuildSpineConnections({ ...project, connections }, ctx.chapters, ctx.chapterVideos)
+      const next = { ...project, connections }
+      if (isManagedSpineConnection(project, edit.from, edit.to, ctx.chapters, ctx.chapterVideos)) {
+        return rebuildSpineConnections(next, ctx.chapters, ctx.chapterVideos)
+      }
+      return next
     }
 
     case 'reconnectEdge': {

@@ -54,13 +54,13 @@ export function getVideoIdFromNode(node: FlowNode): number | null {
   return typeof id === 'number' ? id : typeof id === 'string' ? parseInt(id, 10) : null
 }
 
-function collectVideoEvents(flow: FlowProject, videoNodeId: string): FlowNode[] {
+export function collectVideoEvents(flow: FlowProject, videoNodeId: string): FlowNode[] {
   const events: FlowNode[] = []
   const seen = new Set<string>()
   const walk = (nodeId: string) => {
     for (const next of getNextNodes(flow, nodeId)) {
       if (seen.has(next.id)) continue
-      if (!isPlaybackTriggerNode(next, flow)) break
+      if (!isPlaybackTriggerNode(next, flow)) continue
       seen.add(next.id)
       events.push(next)
       walk(next.id)
@@ -239,6 +239,9 @@ export function resolveInsertTarget(
         const afterSegmentIndex = getAfterSegmentIndexForSelection(project, chapter, selectedNode, _chapterVideos)
         return { scope: 'chapter', chapterNodeId: chapter.id, afterSegmentIndex }
       }
+    }
+    if (type === 'pause') {
+      return { scope: 'reject', message: 'Place Pause & Ask on a video (during playback).' }
     }
     return { scope: 'top' }
   }
@@ -587,6 +590,18 @@ function collectSpinePairs(
   videos: AdminChapterVideo[],
 ): FlowConnection[] {
   return collectLinearSpinePairs(flow, timeline, videos)
+}
+
+export function isManagedSpineConnection(
+  project: FlowProject,
+  from: string,
+  to: string,
+  chapters: AdminChapter[],
+  videos: AdminChapterVideo[],
+): boolean {
+  const timeline = projectToTimeline(project, chapters, videos)
+  const spine = collectGraphSpinePairs(project, timeline, videos)
+  return spine.some(c => c.from === from && c.to === to)
 }
 
 export function rebuildSpineConnections(
@@ -1099,6 +1114,10 @@ export function insertNodeInTimeline(
     return next
   }
 
+  if (node.type === 'toaster') {
+    node.parameters = { ...node.parameters, placement: 'between' }
+  }
+
   next.nodes.push(node)
   const timeline = projectToTimeline(next, chapters, videos)
   const rowIndex = target.scope === 'top' ? (target.afterRowIndex ?? timeline.length - 1) : timeline.length - 1
@@ -1149,7 +1168,13 @@ export function nodeSummary(node: FlowNode): string {
     case 'chapter': return 'Chapter block'
     case 'video': return 'Video'
     case 'toaster': return (node.parameters.title as string) || 'Pop-up'
-    case 'pause': return (node.parameters.prompt as string) || 'Pause question'
+    case 'pause': {
+      const at = (node.parameters.triggerAtSeconds as number) || 0
+      const timeout = (node.parameters.timeoutSeconds as number) || 0
+      const prompt = (node.parameters.prompt as string) || 'Pause question'
+      const timeoutHint = timeout > 0 ? ` · auto-continue ${timeout}s` : ''
+      return `${prompt} @ ${at}s${timeoutHint}`
+    }
     case 'aichat': return (node.parameters.heading as string) || 'AI chat'
     case 'event': return (node.parameters.heading as string) || 'Event registration'
     default: return node.name

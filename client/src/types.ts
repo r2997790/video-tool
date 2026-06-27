@@ -53,6 +53,7 @@ export interface VideoPausePoint {
   options?: string[]
   required: boolean
   placeholder?: string | null
+  timeoutSeconds?: number
 }
 
 export interface EngagementSession {

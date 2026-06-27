@@ -231,6 +231,14 @@ function VisualFlowEditorCanvas({ state }: VisualFlowEditorProps) {
     applyEdit({ type: 'connectNodes', from: params.source, to: params.target })
   }, [nodes, applyEdit, toast])
 
+  const onEdgesDelete = useCallback((deleted: Edge[]) => {
+    if (syncingRef.current) return
+    for (const edge of deleted) {
+      applyEdit({ type: 'disconnectEdge', from: edge.source, to: edge.target })
+    }
+    selectEdge(null)
+  }, [applyEdit, selectEdge])
+
   const onEdgesChangeWrapped = useCallback((changes: Parameters<typeof onEdgesChange>[0]) => {
     onEdgesChange(changes)
     if (syncingRef.current) return
@@ -365,6 +373,13 @@ function VisualFlowEditorCanvas({ state }: VisualFlowEditorProps) {
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
 
       const mod = e.ctrlKey || e.metaKey
+      if (!mod && (e.key === 'Delete' || e.key === 'Backspace') && selectedEdge) {
+        e.preventDefault()
+        applyEdit({ type: 'disconnectEdge', from: selectedEdge.from, to: selectedEdge.to })
+        selectEdge(null)
+        setA11yMessage('Connection removed')
+        return
+      }
       if (mod && e.key.toLowerCase() === 'c') {
         const ids = selectedNodeIds.length ? selectedNodeIds : selectedNodeId ? [selectedNodeId] : []
         const clip = buildClipboard(nodes, edges, ids)
@@ -400,7 +415,7 @@ function VisualFlowEditorCanvas({ state }: VisualFlowEditorProps) {
     }
     el.addEventListener('keydown', onKeyDown)
     return () => el.removeEventListener('keydown', onKeyDown)
-  }, [nodes, edges, selectedNodeIds, selectedNodeId, applyEdit, toast])
+  }, [nodes, edges, selectedNodeIds, selectedNodeId, selectedEdge, applyEdit, selectEdge, toast])
 
   const onReconnect = useCallback((oldEdge: Edge, newConnection: Connection) => {
     if (!newConnection.source || !newConnection.target) return
@@ -460,6 +475,7 @@ function VisualFlowEditorCanvas({ state }: VisualFlowEditorProps) {
           edges={styledEdges}
           onNodesChange={onNodesChangeWrapped}
           onEdgesChange={onEdgesChangeWrapped}
+          onEdgesDelete={onEdgesDelete}
           onConnect={onConnect}
           onReconnect={onReconnect}
           onEdgeClick={onEdgeClick}

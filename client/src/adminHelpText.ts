@@ -142,6 +142,7 @@ export const HELP = {
     toasterDownloadUrl: 'File URL for download toasters.',
     toasterDownloadFileName: 'Suggested download filename.',
     pauseTriggerAt: 'Video pause timestamp in seconds from chapter start.',
+    pauseTimeoutSeconds: 'Optional auto-continue delay in seconds. Leave 0 to wait until the viewer answers.',
     pausePrompt: 'Question shown while the video is paused.',
     pauseFieldId: 'Answer storage ID. Use in branch nodes for conditional routing.',
     pauseInputType: 'Input control for the paused question.',

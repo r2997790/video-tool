@@ -74,7 +74,7 @@ export function validateFlowProject(
     }
   }
 
-  for (const node of project.nodes.filter(n => n.type === 'question' || n.type === 'aichat')) {
+  for (const node of project.nodes.filter(n => n.type === 'question' || n.type === 'aichat' || n.type === 'pause')) {
     if (isVideoEventChainNode(project, node.id) && (node.parameters.triggerAtSeconds as number | undefined) == null) {
       warnings.push(`"${node.name}" is attached to a video but has no trigger time.`)
     }

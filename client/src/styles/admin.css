@@ -405,6 +405,22 @@
   width: 100%;
 }
 
+.flow-editor-toolbar-selection {
+  width: 100%;
+  min-height: 0;
+}
+
+.flow-editor-toolbar-selection:empty {
+  display: none;
+}
+
+.flow-editor-toolbar-selection .flow-context-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
 .flow-editor-workflow-nav {
   display: flex;
   gap: 0;

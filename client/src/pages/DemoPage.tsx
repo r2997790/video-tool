@@ -290,6 +290,21 @@ export function DemoPage() {
     return () => clearTimeout(timer)
   }, [activeToaster?.triggerKey, activeToaster?.durationSeconds, logEvent])
 
+  useEffect(() => {
+    if (!activePausePoint) return
+    const timeout = activePausePoint.timeoutSeconds ?? 0
+    if (timeout <= 0) return
+    const timer = setTimeout(() => {
+      logEvent('pause_question_dismissed', {
+        chapterId: activeId ?? undefined,
+        data: { pausePointId: activePausePoint.id, auto: true, triggerKey: activePausePoint.triggerKey },
+      })
+      setActivePausePoint(null)
+      setPlaying(true)
+    }, timeout * 1000)
+    return () => clearTimeout(timer)
+  }, [activePausePoint, activeId, logEvent])
+
   const pauseQuestionNode: FlowNode | null = activePausePoint ? {
     id: `pause-${activePausePoint.triggerKey || activePausePoint.id}`,
     type: 'question',

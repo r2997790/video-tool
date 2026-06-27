@@ -430,6 +430,11 @@ export function FlowNodePropertyPanel({
               value={(selected.parameters.triggerAtSeconds as number) || 0}
               onChange={e => onUpdate({ parameters: { triggerAtSeconds: parseInt(e.target.value, 10) || 0 } })} />
           </AdminFieldLabel>
+          <AdminFieldLabel label="Continue after (seconds)" help={HELP.flowEditor.pauseTimeoutSeconds}>
+            <input className="admin-input" type="number" min={0}
+              value={(selected.parameters.timeoutSeconds as number) || 0}
+              onChange={e => onUpdate({ parameters: { timeoutSeconds: parseInt(e.target.value, 10) || 0 } })} />
+          </AdminFieldLabel>
           <AdminFieldLabel label="Prompt" help={HELP.flowEditor.pausePrompt}>
             <input className="admin-input" value={(selected.parameters.prompt as string) || ''}
               onChange={e => onUpdate({ parameters: { prompt: e.target.value } })} />

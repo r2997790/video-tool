@@ -9,13 +9,12 @@ interface SelectionContextBarProps {
 }
 
 export function SelectionContextBar({ state, onDeleteSelection, onBreakLink, onNestInChapter }: SelectionContextBarProps) {
-  const { view, selectedNode, selectedNodeIds, selectedEdge, project } = state
-  const [showHelp, setShowHelp] = useState(false)
+  const { selectedNode, selectedNodeIds, selectedEdge, project } = state
   const [pickChapterId, setPickChapterId] = useState('')
 
   const hasNodeSelection = selectedNodeIds.length > 0 || !!selectedNode
   const hasEdgeSelection = !!selectedEdge
-  const showBar = hasNodeSelection || hasEdgeSelection || view === 'visual'
+  const showBar = hasNodeSelection || hasEdgeSelection
 
   const chapterNodes = useMemo(
     () => project.nodes.filter(n => n.type === 'chapter'),
@@ -42,65 +41,44 @@ export function SelectionContextBar({ state, onDeleteSelection, onBreakLink, onN
   if (!showBar) return null
 
   return (
-    <div className="flow-visual-toolbar">
-      <div className="flow-context-actions">
-        {nestableIds.length >= 1 && chapterNodes.length > 0 && (
-          <>
-            {!targetChapterFromSelection && (
-              <select
-                className="admin-input admin-btn-sm"
-                value={pickChapterId}
-                onChange={e => setPickChapterId(e.target.value)}
-                aria-label="Target chapter"
-              >
-                <option value="">Nest in chapter…</option>
-                {chapterNodes.map(ch => (
-                  <option key={ch.id} value={ch.id}>{ch.name}</option>
-                ))}
-              </select>
-            )}
-            <button
-              type="button"
-              className="admin-btn admin-btn-sm"
-              disabled={!canNest}
-              onClick={() => {
-                const chapterId = targetChapterFromSelection || pickChapterId
-                if (chapterId) onNestInChapter(chapterId)
-              }}
+    <div className="flow-context-actions">
+      {nestableIds.length >= 1 && chapterNodes.length > 0 && (
+        <>
+          {!targetChapterFromSelection && (
+            <select
+              className="admin-input admin-btn-sm"
+              value={pickChapterId}
+              onChange={e => setPickChapterId(e.target.value)}
+              aria-label="Target chapter"
             >
-              Nest in chapter{nestableIds.length > 1 ? ` (${nestableIds.length})` : ''}
-            </button>
-          </>
-        )}
-        {hasEdgeSelection && (
-          <button type="button" className="admin-btn admin-btn-danger admin-btn-sm" onClick={onBreakLink}>
-            Break link
-          </button>
-        )}
-        {hasNodeSelection && (
-          <button type="button" className="admin-btn admin-btn-danger admin-btn-sm" onClick={onDeleteSelection}>
-            Delete {selectedNodeIds.length > 1 ? `(${selectedNodeIds.length})` : 'node'}
-          </button>
-        )}
-      </div>
-      {view === 'visual' && (
-        <div className="flow-context-help">
+              <option value="">Nest in chapter…</option>
+              {chapterNodes.map(ch => (
+                <option key={ch.id} value={ch.id}>{ch.name}</option>
+              ))}
+            </select>
+          )}
           <button
             type="button"
-            className="admin-btn admin-btn-sm flow-help-btn"
-            aria-label="Canvas help"
-            aria-expanded={showHelp}
-            onClick={() => setShowHelp(v => !v)}
+            className="admin-btn admin-btn-sm"
+            disabled={!canNest}
+            onClick={() => {
+              const chapterId = targetChapterFromSelection || pickChapterId
+              if (chapterId) onNestInChapter(chapterId)
+            }}
           >
-            ?
+            Nest in chapter{nestableIds.length > 1 ? ` (${nestableIds.length})` : ''}
           </button>
-          {showHelp && (
-            <div className="flow-help-tooltip" role="tooltip">
-              Drag nodes from the palette · Drop into chapter groups to nest · Shift+click multi-select ·
-              Select nodes + Nest in chapter · Ctrl+C/V copy/paste
-            </div>
-          )}
-        </div>
+        </>
+      )}
+      {hasEdgeSelection && (
+        <button type="button" className="admin-btn admin-btn-danger admin-btn-sm" onClick={onBreakLink}>
+          Break link
+        </button>
+      )}
+      {hasNodeSelection && (
+        <button type="button" className="admin-btn admin-btn-danger admin-btn-sm" onClick={onDeleteSelection}>
+          Delete {selectedNodeIds.length > 1 ? `(${selectedNodeIds.length})` : 'node'}
+        </button>
       )}
     </div>
   )
