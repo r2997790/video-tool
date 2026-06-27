@@ -1101,6 +1101,8 @@ button.admin-flow-tab {
   display: block;
   width: 100%;
   height: auto;
+  aspect-ratio: 16 / 9;
+  object-fit: contain;
   border-radius: 8px;
   border: 1px solid var(--admin-border);
   background: var(--admin-bg);

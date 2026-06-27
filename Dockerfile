@@ -17,8 +17,8 @@ COPY ["src/VideoTool.Web/VideoTool.Web.csproj", "src/VideoTool.Web/"]
 COPY ["src/VideoTool.Data/VideoTool.Data.csproj", "src/VideoTool.Data/"]
 COPY ["src/VideoTool.Domain/VideoTool.Domain.csproj", "src/VideoTool.Domain/"]
 RUN dotnet restore "src/VideoTool.Web/VideoTool.Web.csproj"
-COPY --from=frontend /src/src/VideoTool.Web/wwwroot ./src/VideoTool.Web/wwwroot
 COPY src/ ./src/
+COPY --from=frontend /src/src/VideoTool.Web/wwwroot ./src/VideoTool.Web/wwwroot
 WORKDIR "/src/src/VideoTool.Web"
 RUN dotnet publish "VideoTool.Web.csproj" -c Release -o /app/publish
 

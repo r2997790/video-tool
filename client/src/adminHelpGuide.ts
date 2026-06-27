@@ -1,3 +1,5 @@
+import { HELP_IMAGE_URLS } from './helpImages'
+
 export type HelpLink = {
   label: string
   to: string
@@ -38,7 +40,7 @@ export const HELP_SECTIONS: HelpSection[] = [
       { label: 'Settings', to: '/admin/settings' },
     ],
     screenshot: {
-      src: '/help/flows-list.svg',
+      src: HELP_IMAGE_URLS.flowsList,
       alt: 'Flow Design list showing demo projects with enable toggles and action buttons',
       caption: 'The Flow Design page lists all your demo projects. Use the toggle to publish or unpublish each flow.',
     },
@@ -65,7 +67,7 @@ export const HELP_SECTIONS: HelpSection[] = [
       'Copy the public share link from the flow list to send to prospects or embed in emails.',
     ],
     screenshot: {
-      src: '/help/flow-editor.svg',
+      src: HELP_IMAGE_URLS.flowEditor,
       alt: 'Visual flow editor canvas with connected chapter and question nodes',
       caption: 'The flow editor shows your demo as a connected canvas. Click any node to edit its settings in the panel on the right.',
     },
@@ -118,7 +120,7 @@ export const HELP_SECTIONS: HelpSection[] = [
       'Set a live duration so the event automatically ends after the broadcast window.',
     ],
     screenshot: {
-      src: '/help/event-setup.svg',
+      src: HELP_IMAGE_URLS.eventSetup,
       alt: 'Event settings form with title, slug, flow selector, and holding screen fields',
       caption: 'Event Settings lets you link a flow, configure the waiting-room screen, and set the public slug.',
     },
@@ -144,7 +146,7 @@ export const HELP_SECTIONS: HelpSection[] = [
       'Lead webhooks fire a JSON payload to your CRM whenever a new lead is captured.',
     ],
     screenshot: {
-      src: '/help/live-chat.svg',
+      src: HELP_IMAGE_URLS.liveChat,
       alt: 'Live chat panel showing viewer messages and admin reply field',
       caption: 'The Live chat tab shows incoming viewer messages. Type a reply and send it directly to the active session.',
     },
@@ -169,7 +171,7 @@ export const HELP_SECTIONS: HelpSection[] = [
       { label: 'Settings — Integrations', to: '/admin/settings?tab=integrations' },
     ],
     screenshot: {
-      src: '/help/settings-theme.svg',
+      src: HELP_IMAGE_URLS.settingsTheme,
       alt: 'Theme settings with colour pickers and a live preview of the demo viewer',
       caption: 'The Theme tab lets you match demos to your brand. The preview panel shows how viewers will see your changes.',
     },
@@ -195,7 +197,7 @@ export const HELP_SECTIONS: HelpSection[] = [
       { label: 'Event Management', to: '/admin/events' },
     ],
     screenshot: {
-      src: '/help/public-demo.svg',
+      src: HELP_IMAGE_URLS.publicDemo,
       alt: 'Public demo viewer with chapter sidebar, video player, and chat panel',
       caption: 'The public demo viewer shows chapters on the left, video in the centre, and chat on the right.',
     },

@@ -1,3 +1,5 @@
+import { HELP_IMAGE_URLS } from '../helpImages'
+
 export type FeaturePreviewKind =
   | 'flow-editor'
   | 'chapters'
@@ -9,11 +11,11 @@ export type FeaturePreviewKind =
   | 'integrations'
 
 const SVG_PREVIEWS: Partial<Record<FeaturePreviewKind, string>> = {
-  'flow-editor': '/help/flow-editor.svg',
-  chapters: '/help/public-demo.svg',
-  'live-chat': '/help/live-chat.svg',
-  events: '/help/event-setup.svg',
-  branding: '/help/settings-theme.svg',
+  'flow-editor': HELP_IMAGE_URLS.flowEditor,
+  chapters: HELP_IMAGE_URLS.publicDemo,
+  'live-chat': HELP_IMAGE_URLS.liveChat,
+  events: HELP_IMAGE_URLS.eventSetup,
+  branding: HELP_IMAGE_URLS.settingsTheme,
 }
 
 type FeatureExamplePreviewProps = {
