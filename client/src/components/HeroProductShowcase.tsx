@@ -10,7 +10,7 @@ type Callout = {
 
 type Slide = {
   label: string
-  caption?: string
+  caption: string
   alt: string
   content: ReactNode
   callouts: Callout[]
@@ -30,6 +30,7 @@ const SLIDES: Slide[] = [
   },
   {
     label: 'Run the experience',
+    caption: 'Deliver a branded viewer with chapter guides, live chat, and AI — so every prospect stays engaged from first click to qualified lead.',
     alt: 'Interactive demo viewer with chapter guides, playing video, and live chat',
     content: <DemoViewerMock />,
     callouts: [
@@ -80,8 +81,10 @@ export function HeroProductShowcase() {
     >
       <div className="lp-hero-showcase-header">
         <div className="lp-hero-showcase-heading">
-          <p className="lp-hero-showcase-label">{slide.label}</p>
-          {slide.caption && <p className="lp-hero-showcase-caption">{slide.caption}</p>}
+          <p className="lp-hero-showcase-line">
+            <span className="lp-hero-showcase-label">{slide.label}</span>
+            <span className="lp-hero-showcase-caption">{slide.caption}</span>
+          </p>
         </div>
         <div className="lp-hero-showcase-dots" role="tablist" aria-label="Product showcase slides">
           {SLIDES.map((s, i) => (

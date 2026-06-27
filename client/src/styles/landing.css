@@ -203,11 +203,23 @@
   min-width: 0;
 }
 
+.lp-hero-showcase-line {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.45em 0.65em;
+  line-height: 1.45;
+}
+
 .lp-hero-showcase-caption {
-  margin: 6px 0 0;
-  max-width: 520px;
+  margin: 0;
+  font-family: var(--font-body);
   font-size: 13px;
-  line-height: 1.55;
+  font-weight: 400;
+  line-height: 1.45;
+  letter-spacing: normal;
+  text-transform: none;
   color: var(--landing-muted);
 }
 
@@ -348,13 +360,13 @@
 }
 
 .lp-hero-showcase-label {
-  margin: 0;
   font-family: var(--font-display);
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--landing-accent);
+  flex-shrink: 0;
 }
 
 .lp-hero-showcase-dots {
