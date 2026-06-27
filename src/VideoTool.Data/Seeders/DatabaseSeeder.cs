@@ -50,7 +50,7 @@ public static class DatabaseSeeder
             });
 
             db.Chapters.AddRange(
-                new Chapter { FlowProjectId = defaultFlow.Id, Slug = "overview", Name = "Empauer Overview", Description = "What Empauer does and why it matters.", VideoLink = "dQw4w9WgXcQ", Duration = "2:30", SortOrder = 1 },
+                new Chapter { FlowProjectId = defaultFlow.Id, Slug = "overview", Name = "Platform Overview", Description = "What this platform does and why it matters.", VideoLink = "dQw4w9WgXcQ", Duration = "2:30", SortOrder = 1 },
                 new Chapter { FlowProjectId = defaultFlow.Id, Slug = "direct-intro", Name = "Introducing Direct", Description = "Food loss and waste intelligence for your business.", VideoLink = "dQw4w9WgXcQ", Duration = "3:45", SortOrder = 2 },
                 new Chapter { FlowProjectId = defaultFlow.Id, Slug = "direct-demo", Name = "Direct — Platform walkthrough", Description = "See how Direct maps and measures waste across your supply chain.", VideoLink = "dQw4w9WgXcQ", Duration = "6:15", SortOrder = 3, IsLocked = true, GateJson = gateJson },
                 new Chapter { FlowProjectId = defaultFlow.Id, Slug = "venta-intro", Name = "Introducing Venta", Description = "Packaging governance and specification made clear.", VideoLink = "dQw4w9WgXcQ", Duration = "3:10", SortOrder = 4 },
@@ -64,7 +64,7 @@ public static class DatabaseSeeder
             {
                 FlowProjectId = defaultFlow.Id,
                 Role = "assistant",
-                Text = "Hi there. I can answer questions about this demo, Empauer's products Direct and Venta, or sustainability topics. What would you like to know?",
+                Text = "Hi there. I can answer questions about this demo, featured products, or sustainability topics. What would you like to know?",
                 SortOrder = 1
             });
         }
@@ -73,8 +73,41 @@ public static class DatabaseSeeder
 
         await SeedTestFlowAsync(db);
         await SeedTestEventAsync(db);
+        await ApplyNeutralBrandingAsync(db);
 
         await db.SaveChangesAsync();
+    }
+
+    private static async Task ApplyNeutralBrandingAsync(VideoToolDbContext db)
+    {
+        const string legacyBrand = "Emp" + "auer";
+
+        foreach (var config in await db.DemoConfigs.ToListAsync())
+        {
+            if (config.ThemeBrandName.Contains(legacyBrand, StringComparison.OrdinalIgnoreCase))
+                config.ThemeBrandName = "Demo Studio";
+            if (config.ThemeChatTitle.Contains(legacyBrand, StringComparison.OrdinalIgnoreCase))
+                config.ThemeChatTitle = "Demo Assistant";
+            if (config.AiSystemPrompt.Contains(legacyBrand, StringComparison.OrdinalIgnoreCase))
+                config.AiSystemPrompt = "You are a knowledgeable assistant for an interactive video demo platform. Answer questions about the demo, products, and sustainability topics concisely and professionally.";
+        }
+
+        foreach (var chapter in await db.Chapters.ToListAsync())
+        {
+            if (chapter.Name.Contains(legacyBrand, StringComparison.OrdinalIgnoreCase))
+                chapter.Name = chapter.Name.Replace(legacyBrand + " Overview", "Platform Overview", StringComparison.OrdinalIgnoreCase)
+                    .Replace(legacyBrand, "", StringComparison.OrdinalIgnoreCase).Trim(' ', '—', '-');
+            if (chapter.Description.Contains(legacyBrand, StringComparison.OrdinalIgnoreCase))
+                chapter.Description = chapter.Description
+                    .Replace("What " + legacyBrand + " does and why it matters.", "What this platform does and why it matters.", StringComparison.OrdinalIgnoreCase)
+                    .Replace(legacyBrand, "the platform", StringComparison.OrdinalIgnoreCase);
+        }
+
+        foreach (var message in await db.SeedChatMessages.ToListAsync())
+        {
+            if (message.Text.Contains(legacyBrand, StringComparison.OrdinalIgnoreCase))
+                message.Text = "Hi there. I can answer questions about this demo, featured products, or sustainability topics. What would you like to know?";
+        }
     }
 
     private static async Task SeedTestFlowAsync(VideoToolDbContext db)

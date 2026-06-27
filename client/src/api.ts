@@ -21,6 +21,7 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  getHome: () => request<import('./types').HomePageData>('/api/demo/home'),
   getDemoConfig: (flowSlug?: string) =>
     request<import('./types').DemoConfigResponse>(
       flowSlug ? `/api/demo/config/${encodeURIComponent(flowSlug)}` : '/api/demo/config',

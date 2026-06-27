@@ -1,5 +1,6 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { FlowEditorToolbar } from './FlowEditorToolbar'
+import { useFlowName } from './FlowNameContext'
 import { SelectionContextBar } from './SelectionContextBar'
 import { TimelineEditor, addNodeWithContext } from './TimelineEditor'
 import { VisualFlowEditor } from './VisualFlowEditor'
@@ -38,7 +39,14 @@ export function FlowEditorShell({ flowSlug }: FlowEditorShellProps) {
     setSelectedNodeIds,
     view,
     save,
+    projectName,
+    setProjectName,
   } = state
+
+  const { registerEditor, syncFromEditor } = useFlowName()
+
+  useEffect(() => registerEditor(setProjectName), [registerEditor, setProjectName])
+  useEffect(() => { syncFromEditor(projectName) }, [projectName, syncFromEditor])
 
   const handleSave = async (force = false) => {
     const result = await save(force)
@@ -55,11 +63,6 @@ export function FlowEditorShell({ flowSlug }: FlowEditorShellProps) {
   const handleAddNode = useCallback((type: FlowNode['type']) => {
     addNodeWithContext(state, type, toast)
   }, [state, toast])
-
-  const handleAutoLayout = useCallback(() => {
-    applyEdit({ type: 'autoLayout' })
-    toast.success('Graph auto-layout applied')
-  }, [applyEdit, toast])
 
   const handleDeleteSelection = useCallback(() => {
     const ids = selectedNodeIds.length
@@ -147,7 +150,6 @@ export function FlowEditorShell({ flowSlug }: FlowEditorShellProps) {
         state={state}
         onSave={handleSave}
         onAddNode={handleAddNode}
-        onAutoLayout={handleAutoLayout}
       />
       <SelectionContextBar
         state={state}

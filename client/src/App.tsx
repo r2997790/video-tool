@@ -6,6 +6,7 @@ import { FlowEditorPage } from './pages/admin/FlowEditorPage'
 import { FlowLayout } from './pages/admin/FlowLayout'
 import { FlowsPage } from './pages/admin/FlowsPage'
 import { DemoEntryPage } from './pages/DemoEntryPage'
+import { LandingPage } from './pages/LandingPage'
 import { LoginPage } from './pages/admin/LoginPage'
 import { SeedChatPage } from './pages/admin/SeedChatPage'
 import { SettingsPage } from './pages/admin/SettingsPage'
@@ -36,7 +37,7 @@ export default function App() {
     <ToastProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Navigate to="/demo" replace />} />
+          <Route path="/" element={<LandingPage />} />
           <Route path="/demo" element={<DemoEntryPage />} />
           <Route path="/flow/:flowSlug" element={<DemoPage />} />
           <Route path="/event/:slug" element={<EventLobbyPage />} />

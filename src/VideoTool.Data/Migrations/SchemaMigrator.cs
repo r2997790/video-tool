@@ -25,8 +25,8 @@ public static class SchemaMigrator
             await EnsureColumnAsync(conn, "DemoConfigs", "ThemeSurfaceColor", "TEXT NOT NULL DEFAULT '#1a1b1d'");
             await EnsureColumnAsync(conn, "DemoConfigs", "ThemeTextColor", "TEXT NOT NULL DEFAULT '#e8e8e8'");
             await EnsureColumnAsync(conn, "DemoConfigs", "ThemeFontFamily", "TEXT NOT NULL DEFAULT 'Poppins'");
-            await EnsureColumnAsync(conn, "DemoConfigs", "ThemeBrandName", "TEXT NOT NULL DEFAULT 'Empauer'");
-            await EnsureColumnAsync(conn, "DemoConfigs", "ThemeChatTitle", "TEXT NOT NULL DEFAULT 'Ask Empauer'");
+            await EnsureColumnAsync(conn, "DemoConfigs", "ThemeBrandName", "TEXT NOT NULL DEFAULT 'Demo Studio'");
+            await EnsureColumnAsync(conn, "DemoConfigs", "ThemeChatTitle", "TEXT NOT NULL DEFAULT 'Demo Assistant'");
             await EnsureTableAsync(conn, "VideoToasters", """
                 CREATE TABLE IF NOT EXISTS "VideoToasters" (
                     "Id" INTEGER NOT NULL CONSTRAINT "PK_VideoToasters" PRIMARY KEY AUTOINCREMENT,

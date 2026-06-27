@@ -12,10 +12,10 @@ public class AiChatService
 
     private static readonly string[] Fallbacks =
     [
-        "Empauer's tools give organisations a complete, evidence-based view of their sustainability and operational data.",
+        "Our platform gives organisations a complete, evidence-based view of their sustainability and operational data.",
         "Direct maps material flows and quantifies the true cost of waste — giving your team the evidence it needs for confident decisions.",
         "Venta helps organisations manage packaging specifications, compliance and product data in one structured system.",
-        "Empauer works with agribusiness, FMCG, logistics and retail organisations across Australia and internationally."
+        "We work with agribusiness, FMCG, logistics and retail organisations across Australia and internationally."
     ];
 
     public AiChatService(IHttpClientFactory httpClientFactory, IConfiguration config, ILogger<AiChatService> logger)

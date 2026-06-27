@@ -46,7 +46,9 @@ export function SharePanel({ slug, isEnabled = true, compact = false }: SharePan
   return (
     <div className={`admin-share-panel${compact ? ' admin-share-panel-compact' : ''}`}>
       <div className="admin-share-url-row">
-        <input className="admin-input admin-share-input" readOnly value={fullUrl} onFocus={e => e.target.select()} />
+        {!compact && (
+          <input className="admin-input admin-share-input" readOnly value={fullUrl} onFocus={e => e.target.select()} />
+        )}
         <AdminMenu
           align="right"
           items={shareItems}

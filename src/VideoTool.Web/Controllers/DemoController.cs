@@ -50,6 +50,61 @@ public class DemoController : ControllerBase
 
 
 
+    [HttpGet("home")]
+    public async Task<IActionResult> GetHome()
+    {
+        var config = await _db.DemoConfigs.AsNoTracking().FirstAsync();
+        var now = DateTime.UtcNow;
+
+        var flows = await _db.FlowProjects.AsNoTracking()
+            .Where(f => f.IsEnabled)
+            .OrderBy(f => f.ProjectName)
+            .Select(f => new
+            {
+                f.Slug,
+                projectName = f.ProjectName,
+                url = $"/flow/{f.Slug}",
+            })
+            .ToListAsync();
+
+        var scheduledEvents = await _db.ScheduledEvents.AsNoTracking()
+            .Where(e => e.IsEnabled)
+            .OrderBy(e => e.StartsAtUtc)
+            .ToListAsync();
+
+        var events = scheduledEvents
+            .Select(ev =>
+            {
+                var nextStarts = _recurrence.GetNextStartsAtUtc(ev, now);
+                var isLive = _recurrence.IsLive(ev, now);
+                return new
+                {
+                    ev.Slug,
+                    ev.Title,
+                    ev.FlowSlug,
+                    ev.Timezone,
+                    startsAtUtc = ev.StartsAtUtc,
+                    nextStartsAtUtc = nextStarts,
+                    isLive,
+                    url = $"/event/{ev.Slug}",
+                };
+            })
+            .Where(e => e.isLive || (e.nextStartsAtUtc.HasValue && e.nextStartsAtUtc.Value >= now.AddHours(-2)))
+            .Take(6)
+            .ToList();
+
+        return Ok(new
+        {
+            brandName = config.ThemeBrandName,
+            logoUrl = config.ThemeLogoUrl,
+            primaryColor = config.ThemePrimaryColor,
+            accentColor = config.ThemeAccentColor,
+            tagline = config.DemoChatSubtitle,
+            flows,
+            events,
+        });
+    }
+
     [HttpGet("config")]
 
     public Task<IActionResult> GetConfigLegacy() => GetConfigBySlug("default");

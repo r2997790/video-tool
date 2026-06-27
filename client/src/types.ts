@@ -178,6 +178,33 @@ export interface FlowSummary {
   publicUrl: string
 }
 
+export interface HomePageFlow {
+  slug: string
+  projectName: string
+  url: string
+}
+
+export interface HomePageEvent {
+  slug: string
+  title: string
+  flowSlug: string | null
+  timezone: string | null
+  startsAtUtc: string
+  nextStartsAtUtc: string | null
+  isLive: boolean
+  url: string
+}
+
+export interface HomePageData {
+  brandName: string
+  logoUrl: string | null
+  primaryColor: string
+  accentColor: string
+  tagline: string | null
+  flows: HomePageFlow[]
+  events: HomePageEvent[]
+}
+
 export interface FlowDetail extends FlowSummary {
   projectData: FlowProject
 }

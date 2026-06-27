@@ -49,15 +49,15 @@ public class VideoToolDbContext : DbContext
             SeedChatEnabled = false,
             ChapterPickEnabled = true,
             PauseEnabled = true,
-            AiSystemPrompt = "You are a knowledgeable assistant for Empauer — a sustainability software company. Answer questions about the demo, products, and sustainability topics concisely and professionally.",
+            AiSystemPrompt = "You are a knowledgeable assistant for an interactive video demo platform. Answer questions about the demo, products, and sustainability topics concisely and professionally.",
             ThemePrimaryColor = "#77c043",
             ThemeAccentColor = "#4f8a28",
             ThemeBackgroundColor = "#0f1011",
             ThemeSurfaceColor = "#1a1b1d",
             ThemeTextColor = "#e8e8e8",
             ThemeFontFamily = "Poppins",
-            ThemeBrandName = "Empauer",
-            ThemeChatTitle = "Ask Empauer",
+            ThemeBrandName = "Demo Studio",
+            ThemeChatTitle = "Demo Assistant",
             UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
         });
 

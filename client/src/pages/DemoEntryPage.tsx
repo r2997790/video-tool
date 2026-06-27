@@ -11,10 +11,9 @@ export function DemoEntryPage() {
 
   useEffect(() => {
     if (flowParam) return
-    api.getFlows()
-      .then(flows => {
-        const enabled = flows.filter(f => f.isEnabled)
-        const preferred = enabled.find(f => f.slug === 'test-demo') ?? enabled[0]
+    api.getHome()
+      .then(home => {
+        const preferred = home.flows.find(f => f.slug === 'test-demo') ?? home.flows[0]
         setDefaultSlug(preferred?.slug ?? null)
         setLoading(false)
       })

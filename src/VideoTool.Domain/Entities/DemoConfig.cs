@@ -19,8 +19,8 @@ public class DemoConfig
     public string ThemeSurfaceColor { get; set; } = "#1a1b1d";
     public string ThemeTextColor { get; set; } = "#e8e8e8";
     public string ThemeFontFamily { get; set; } = "Poppins";
-    public string ThemeBrandName { get; set; } = "Empauer";
-    public string ThemeChatTitle { get; set; } = "Ask Empauer";
+    public string ThemeBrandName { get; set; } = "Demo Studio";
+    public string ThemeChatTitle { get; set; } = "Demo Assistant";
     public string? ThemeLogoUrl { get; set; }
     public bool SlackEnabled { get; set; }
     public string? SlackChannelId { get; set; }

@@ -390,17 +390,19 @@
 }
 
 .flow-editor-toolbar-primary {
-  display: grid;
-  grid-template-columns: minmax(120px, 1fr) auto auto;
+  display: flex;
   gap: 8px;
   align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
 }
 
-.flow-editor-name-col {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
+.flow-editor-toolbar-nav {
+  width: 100%;
+}
+
+.flow-editor-toolbar-nav .flow-editor-workflow-nav {
+  width: 100%;
 }
 
 .flow-editor-workflow-nav {
@@ -414,17 +416,30 @@
   font-size: 12px;
 }
 
-.flow-editor-name-input {
-  max-width: none;
-  min-width: 0;
-}
-
 .flow-editor-toolbar-actions {
   display: flex;
   gap: 8px;
   align-items: center;
   flex-wrap: wrap;
   justify-content: flex-end;
+}
+
+.flow-editor-toolbar-actions .admin-btn,
+.flow-editor-toolbar-actions .admin-menu-trigger > .admin-btn {
+  min-height: 36px;
+  padding: 8px 16px;
+  font-size: 13px;
+}
+
+.admin-btn-with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.admin-btn-with-icon .toolbar-icon {
+  flex-shrink: 0;
+  opacity: 0.85;
 }
 
 .flow-editor-add-buttons {
@@ -695,37 +710,57 @@
   flex-wrap: wrap;
 }
 .admin-flow-title-row h2 { margin: 0; font-size: 22px; }
-.admin-flow-status { color: #9b9d9f; font-size: 13px; margin: 4px 0 0; }
-.admin-scope-info-btn {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  border: 1px solid #3a3c3e;
-  background: #111213;
-  color: #9b9d9f;
-  font-size: 12px;
-  font-weight: 700;
-  font-style: italic;
-  cursor: help;
-  flex-shrink: 0;
+
+.admin-inline-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: #fff;
+  cursor: text;
+  border-radius: 4px;
+  padding: 2px 4px;
+  margin-left: -4px;
+  transition: background 120ms;
 }
-.admin-scope-banner {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
+
+.admin-inline-title:hover,
+.admin-inline-title:focus-visible {
+  background: rgba(255, 255, 255, 0.06);
+  outline: none;
 }
-.admin-scope-dismiss {
+
+.admin-inline-title-readonly {
+  cursor: default;
+}
+
+.admin-inline-title-readonly:hover,
+.admin-inline-title-readonly:focus-visible {
   background: none;
-  border: none;
-  color: #9b9d9f;
-  font-size: 20px;
-  line-height: 1;
-  cursor: pointer;
-  padding: 0 4px;
-  flex-shrink: 0;
 }
-.admin-scope-dismiss:hover { color: #fff; }
+
+.admin-inline-title-input {
+  margin: 0;
+  margin-left: -4px;
+  padding: 2px 4px;
+  font: inherit;
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.06);
+  border: none;
+  border-bottom: 2px solid var(--admin-accent, #77c043);
+  border-radius: 4px 4px 0 0;
+  min-width: 120px;
+  max-width: min(480px, 100%);
+  field-sizing: content;
+}
+
+.admin-inline-title-input:focus {
+  outline: none;
+}
+.admin-flow-status { color: #9b9d9f; font-size: 13px; margin: 4px 0 0; }
 .admin-insights-compact {
   display: block;
   width: 100%;
@@ -800,7 +835,7 @@
 .admin-menu-item-label { font-weight: 600; }
 .admin-menu-item-desc { font-size: 11px; color: #9b9d9f; line-height: 1.35; }
 
-.admin-share-panel-compact { flex: 1; min-width: 200px; max-width: 420px; }
+.admin-share-panel-compact { flex: 0 0 auto; }
 
 .admin-event-tab-divider {
   width: 1px;
@@ -859,9 +894,10 @@
     z-index: 140;
   }
   .flow-editor-toolbar-primary {
-    grid-template-columns: 1fr;
+    flex-direction: column;
+    align-items: stretch;
   }
-  .flow-view-toggle { justify-self: start; }
+  .flow-view-toggle { align-self: flex-start; }
   .flow-editor-toolbar-actions {
     justify-content: flex-start;
     width: 100%;
@@ -873,11 +909,19 @@
 }
 
 .flow-view-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  box-sizing: border-box;
+  min-height: 36px;
+  padding: 8px 16px;
   border: none;
   background: #111213;
   color: #9b9d9f;
-  padding: 6px 14px;
-  font-size: 12px;
+  font-size: 13px;
+  font-family: inherit;
+  line-height: 1.2;
   cursor: pointer;
 }
 
