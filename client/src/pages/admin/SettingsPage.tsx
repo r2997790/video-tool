@@ -1,10 +1,28 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { api } from '../../api'
 import { AdminFieldLabel } from '../../components/AdminFieldLabel'
 import { ThemePreview } from '../../components/ThemePreview'
 import { useToast } from '../../components/Toast'
 import { HELP } from '../../adminHelpText'
 import { EventAccessSettings } from './EventAccessSettings'
+
+const SETTINGS_TABS = [
+  { id: 'behavior', label: 'Behavior' },
+  { id: 'theme', label: 'Theme' },
+  { id: 'leads', label: 'Leads' },
+  { id: 'events', label: 'Events' },
+  { id: 'integrations', label: 'Integrations' },
+] as const
+
+type SettingsTabId = (typeof SETTINGS_TABS)[number]['id']
+
+const VALID_TAB_IDS = new Set<string>(SETTINGS_TABS.map(t => t.id))
+
+function resolveTab(tab: string | null): SettingsTabId {
+  if (tab && VALID_TAB_IDS.has(tab)) return tab as SettingsTabId
+  return 'behavior'
+}
 
 const THEME_FIELDS = [
   { key: 'themePrimaryColor', label: 'Primary color', type: 'color', help: HELP.settings.themePrimaryColor },
@@ -63,12 +81,18 @@ function buildPayload(config: Record<string, unknown>) {
 }
 
 export function SettingsPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const activeTab = resolveTab(searchParams.get('tab'))
   const [config, setConfig] = useState<Record<string, unknown> | null>(null)
   const [savedSnapshot, setSavedSnapshot] = useState('')
   const [integrationStatus, setIntegrationStatus] = useState<Record<string, boolean> | null>(null)
   const [logoUploading, setLogoUploading] = useState(false)
   const [saving, setSaving] = useState(false)
   const toast = useToast()
+
+  const setTab = (id: SettingsTabId) => {
+    setSearchParams({ tab: id }, { replace: true })
+  }
 
   useEffect(() => {
     api.getAdminConfig().then(c => {
@@ -122,6 +146,170 @@ export function SettingsPage() {
 
   const statusOk = (key: string) => integrationStatus?.[key] ? 'Configured' : 'Ask IT to configure'
 
+  const behaviorPanel = (
+    <div className="admin-card">
+      {TOGGLES.map(t => (
+        <div key={t.key} className="admin-toggle">
+          <AdminFieldLabel label={t.label} help={t.help} inline />
+          <input type="checkbox" checked={!!config[t.key]} onChange={() => toggle(t.key)} />
+        </div>
+      ))}
+      <div style={{ marginTop: 20 }}>
+        <AdminFieldLabel label="AI System Prompt" help={HELP.settings.aiSystemPrompt}>
+          <textarea
+            className="admin-textarea"
+            value={(config.aiSystemPrompt as string) || ''}
+            onChange={e => setConfig(c => ({ ...c!, aiSystemPrompt: e.target.value }))}
+          />
+        </AdminFieldLabel>
+      </div>
+      <AdminFieldLabel label="Chat subtitle" help="Shown under the chat panel title in the public demo">
+        <input
+          className="admin-input"
+          value={(config.demoChatSubtitle as string) || ''}
+          placeholder="Questions about the demo, products, or services"
+          onChange={e => setConfig(c => ({ ...c!, demoChatSubtitle: e.target.value }))}
+        />
+      </AdminFieldLabel>
+    </div>
+  )
+
+  const themeFieldsPanel = (
+    <div className="admin-card">
+      <AdminFieldLabel label="Demo logo" help={HELP.settings.themeLogoUrl}>
+        <input
+          className="admin-input"
+          value={(config.themeLogoUrl as string) || ''}
+          placeholder="Logo URL"
+          onChange={e => setConfig(c => ({ ...c!, themeLogoUrl: e.target.value }))}
+        />
+        <input type="file" accept="image/*" style={{ marginTop: 8 }}
+          disabled={logoUploading}
+          onChange={e => { const f = e.target.files?.[0]; if (f) uploadLogo(f) }} />
+        {logoUploading && <span style={{ fontSize: 12, color: '#9b9d9f' }}>Uploading…</span>}
+      </AdminFieldLabel>
+      <div className="admin-theme-grid">
+        {THEME_FIELDS.map(f => (
+          <AdminFieldLabel key={f.key} label={f.label} help={f.help}>
+            {f.type === 'color' ? (
+              <input
+                type="color"
+                className="admin-color-input"
+                value={(config[f.key] as string) || '#000000'}
+                onChange={e => setConfig(c => ({ ...c!, [f.key]: e.target.value }))}
+              />
+            ) : (
+              <input
+                className="admin-input"
+                value={(config[f.key] as string) || ''}
+                onChange={e => setConfig(c => ({ ...c!, [f.key]: e.target.value }))}
+              />
+            )}
+          </AdminFieldLabel>
+        ))}
+      </div>
+    </div>
+  )
+
+  const leadsPanel = (
+    <div className="admin-card">
+      <p style={{ color: '#9b9d9f', fontSize: 13, marginTop: 0 }}>
+        Optional notifications when a prospect submits a gate or form in the demo.
+      </p>
+      <AdminFieldLabel label="Webhook URL" help="POST JSON payload on each new lead">
+        <input
+          className="admin-input"
+          value={(config.leadWebhookUrl as string) || ''}
+          placeholder="https://hooks.example.com/leads"
+          onChange={e => setConfig(c => ({ ...c!, leadWebhookUrl: e.target.value }))}
+        />
+      </AdminFieldLabel>
+      <AdminFieldLabel label="Notify email" help="Requires SMTP_HOST env var on the server">
+        <input
+          className="admin-input"
+          value={(config.leadNotifyEmail as string) || ''}
+          placeholder="sales@company.com"
+          onChange={e => setConfig(c => ({ ...c!, leadNotifyEmail: e.target.value }))}
+        />
+      </AdminFieldLabel>
+    </div>
+  )
+
+  const eventsPanel = (
+    <>
+      <div className="admin-card">
+        <AdminFieldLabel label="Registration webhook URL" help="POST JSON when someone registers for an event">
+          <input className="admin-input" value={(config.attendeeWebhookUrl as string) || ''}
+            placeholder="https://hooks.example.com/event-registrations"
+            onChange={e => setConfig(c => ({ ...c!, attendeeWebhookUrl: e.target.value }))} />
+        </AdminFieldLabel>
+        <AdminFieldLabel label="Blocked email domains (JSON array)" help="e.g. [&quot;gmail.com&quot;,&quot;yahoo.com&quot;] — non-work emails">
+          <textarea className="admin-textarea" rows={2} value={(config.blockedEmailDomainsJson as string) || '[]'}
+            onChange={e => setConfig(c => ({ ...c!, blockedEmailDomainsJson: e.target.value }))} />
+        </AdminFieldLabel>
+      </div>
+      <EventAccessSettings />
+    </>
+  )
+
+  const integrationsPanel = (
+    <div className="admin-card">
+      <p style={{ color: '#9b9d9f', fontSize: 13, marginTop: 0 }}>
+        Connect Slack or Microsoft Teams for live chat relay. Ask your IT team to configure credentials on the server — no secrets are stored in the admin UI.
+      </p>
+      <details className="admin-advanced-details">
+        <summary>Advanced: server configuration</summary>
+        <p style={{ fontSize: 12, color: '#9b9d9f' }}>
+          Slack: SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET · Teams: MICROSOFT_APP_ID, MICROSOFT_APP_PASSWORD · Email: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM
+        </p>
+      </details>
+      <div className="admin-toggle">
+        <AdminFieldLabel label="Slack enabled" help={HELP.settings.slackEnabled} inline />
+        <input type="checkbox" checked={!!config.slackEnabled} onChange={() => toggle('slackEnabled')} />
+      </div>
+      <AdminFieldLabel label="Slack default channel ID" help={HELP.settings.slackChannelId}>
+        <input className="admin-input" value={(config.slackChannelId as string) || ''}
+          placeholder="C0123456789"
+          onChange={e => setConfig(c => ({ ...c!, slackChannelId: e.target.value }))} />
+      </AdminFieldLabel>
+      <p style={{ fontSize: 12, color: '#9b9d9f', margin: '8px 0 16px' }}>
+        Slack bot token: {statusOk('slackBotTokenConfigured')}
+        {' · '}Signing secret: {statusOk('slackSigningSecretConfigured')}
+      </p>
+
+      <div className="admin-toggle">
+        <AdminFieldLabel label="Microsoft Teams enabled" help={HELP.settings.teamsEnabled} inline />
+        <input type="checkbox" checked={!!config.teamsEnabled} onChange={() => toggle('teamsEnabled')} />
+      </div>
+      <AdminFieldLabel label="Teams service URL override" help={HELP.settings.teamsServiceUrl}>
+        <input className="admin-input" value={(config.teamsServiceUrl as string) || ''}
+          placeholder="Usually derived from bot activity"
+          onChange={e => setConfig(c => ({ ...c!, teamsServiceUrl: e.target.value }))} />
+      </AdminFieldLabel>
+      <p style={{ fontSize: 12, color: '#9b9d9f', margin: '8px 0 0' }}>
+        Teams app ID: {statusOk('teamsAppIdConfigured')}
+        {' · '}App password: {statusOk('teamsAppPasswordConfigured')}
+      </p>
+    </div>
+  )
+
+  const themePreview = (
+    <aside className="admin-settings-preview">
+      <p className="admin-label-text" style={{ marginBottom: 8 }}>Live preview</p>
+      <ThemePreview
+        brandName={(config.themeBrandName as string) || 'Your brand'}
+        logoUrl={(config.themeLogoUrl as string) || undefined}
+        primaryColor={(config.themePrimaryColor as string) || '#77c043'}
+        accentColor={(config.themeAccentColor as string) || '#4f8a28'}
+        backgroundColor={(config.themeBackgroundColor as string) || '#000'}
+        surfaceColor={(config.themeSurfaceColor as string) || '#111213'}
+        textColor={(config.themeTextColor as string) || '#fff'}
+        chatTitle={(config.themeChatTitle as string) || 'Chat'}
+        chatSubtitle={(config.demoChatSubtitle as string) || undefined}
+      />
+    </aside>
+  )
+
   return (
     <>
       <h2>Settings</h2>
@@ -131,165 +319,36 @@ export function SettingsPage() {
         Per-flow videos, scripts, and pop-ups are edited under each flow.
       </div>
 
-      <div className="admin-settings-layout">
-        <div className="admin-settings-main">
-          <div className="admin-card">
-            <h3 style={{ marginTop: 0 }}>Demo behavior</h3>
-            {TOGGLES.map(t => (
-              <div key={t.key} className="admin-toggle">
-                <AdminFieldLabel label={t.label} help={t.help} inline />
-                <input type="checkbox" checked={!!config[t.key]} onChange={() => toggle(t.key)} />
-              </div>
-            ))}
-            <div style={{ marginTop: 20 }}>
-              <AdminFieldLabel label="AI System Prompt" help={HELP.settings.aiSystemPrompt}>
-                <textarea
-                  className="admin-textarea"
-                  value={(config.aiSystemPrompt as string) || ''}
-                  onChange={e => setConfig(c => ({ ...c!, aiSystemPrompt: e.target.value }))}
-                />
-              </AdminFieldLabel>
-            </div>
-            <AdminFieldLabel label="Chat subtitle" help="Shown under the chat panel title in the public demo">
-              <input
-                className="admin-input"
-                value={(config.demoChatSubtitle as string) || ''}
-                placeholder="Questions about the demo, products, or services"
-                onChange={e => setConfig(c => ({ ...c!, demoChatSubtitle: e.target.value }))}
-              />
-            </AdminFieldLabel>
+      <nav className="admin-flow-tabs" role="tablist" aria-label="Settings sections">
+        {SETTINGS_TABS.map(tab => (
+          <button
+            key={tab.id}
+            type="button"
+            role="tab"
+            aria-selected={activeTab === tab.id}
+            className={`admin-flow-tab${activeTab === tab.id ? ' is-active' : ''}`}
+            onClick={() => setTab(tab.id)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </nav>
+
+      {activeTab === 'theme' ? (
+        <div className="admin-settings-layout">
+          <div className="admin-settings-main admin-settings-tab-panel" role="tabpanel">
+            {themeFieldsPanel}
           </div>
-
-          <div className="admin-card" style={{ marginTop: 24 }}>
-            <h3 style={{ marginTop: 0 }}>Theme</h3>
-            <AdminFieldLabel label="Demo logo" help={HELP.settings.themeLogoUrl}>
-              <input
-                className="admin-input"
-                value={(config.themeLogoUrl as string) || ''}
-                placeholder="Logo URL"
-                onChange={e => setConfig(c => ({ ...c!, themeLogoUrl: e.target.value }))}
-              />
-              <input type="file" accept="image/*" style={{ marginTop: 8 }}
-                disabled={logoUploading}
-                onChange={e => { const f = e.target.files?.[0]; if (f) uploadLogo(f) }} />
-              {logoUploading && <span style={{ fontSize: 12, color: '#9b9d9f' }}>Uploading…</span>}
-            </AdminFieldLabel>
-            <div className="admin-theme-grid">
-              {THEME_FIELDS.map(f => (
-                <AdminFieldLabel key={f.key} label={f.label} help={f.help}>
-                  {f.type === 'color' ? (
-                    <input
-                      type="color"
-                      className="admin-color-input"
-                      value={(config[f.key] as string) || '#000000'}
-                      onChange={e => setConfig(c => ({ ...c!, [f.key]: e.target.value }))}
-                    />
-                  ) : (
-                    <input
-                      className="admin-input"
-                      value={(config[f.key] as string) || ''}
-                      onChange={e => setConfig(c => ({ ...c!, [f.key]: e.target.value }))}
-                    />
-                  )}
-                </AdminFieldLabel>
-              ))}
-            </div>
-          </div>
-
-          <div className="admin-card" style={{ marginTop: 24 }}>
-            <h3 style={{ marginTop: 0 }}>Lead capture</h3>
-            <p style={{ color: '#9b9d9f', fontSize: 13, marginTop: 0 }}>
-              Optional notifications when a prospect submits a gate or form in the demo.
-            </p>
-            <AdminFieldLabel label="Webhook URL" help="POST JSON payload on each new lead">
-              <input
-                className="admin-input"
-                value={(config.leadWebhookUrl as string) || ''}
-                placeholder="https://hooks.example.com/leads"
-                onChange={e => setConfig(c => ({ ...c!, leadWebhookUrl: e.target.value }))}
-              />
-            </AdminFieldLabel>
-            <AdminFieldLabel label="Notify email" help="Requires SMTP_HOST env var on the server">
-              <input
-                className="admin-input"
-                value={(config.leadNotifyEmail as string) || ''}
-                placeholder="sales@company.com"
-                onChange={e => setConfig(c => ({ ...c!, leadNotifyEmail: e.target.value }))}
-              />
-            </AdminFieldLabel>
-          </div>
-
-          <div className="admin-card" style={{ marginTop: 24 }}>
-            <h3 style={{ marginTop: 0 }}>Event registrations</h3>
-            <AdminFieldLabel label="Registration webhook URL" help="POST JSON when someone registers for an event">
-              <input className="admin-input" value={(config.attendeeWebhookUrl as string) || ''}
-                placeholder="https://hooks.example.com/event-registrations"
-                onChange={e => setConfig(c => ({ ...c!, attendeeWebhookUrl: e.target.value }))} />
-            </AdminFieldLabel>
-            <AdminFieldLabel label="Blocked email domains (JSON array)" help="e.g. [&quot;gmail.com&quot;,&quot;yahoo.com&quot;] — non-work emails">
-              <textarea className="admin-textarea" rows={2} value={(config.blockedEmailDomainsJson as string) || '[]'}
-                onChange={e => setConfig(c => ({ ...c!, blockedEmailDomainsJson: e.target.value }))} />
-            </AdminFieldLabel>
-          </div>
-
-          <EventAccessSettings />
-
-          <div className="admin-card" style={{ marginTop: 24 }}>
-            <h3 style={{ marginTop: 0 }}>Integrations</h3>
-            <p style={{ color: '#9b9d9f', fontSize: 13, marginTop: 0 }}>
-              Connect Slack or Microsoft Teams for live chat relay. Ask your IT team to configure credentials on the server — no secrets are stored in the admin UI.
-            </p>
-            <details className="admin-advanced-details">
-              <summary>Advanced: server configuration</summary>
-              <p style={{ fontSize: 12, color: '#9b9d9f' }}>
-                Slack: SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET · Teams: MICROSOFT_APP_ID, MICROSOFT_APP_PASSWORD · Email: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM
-              </p>
-            </details>
-            <div className="admin-toggle">
-              <AdminFieldLabel label="Slack enabled" help={HELP.settings.slackEnabled} inline />
-              <input type="checkbox" checked={!!config.slackEnabled} onChange={() => toggle('slackEnabled')} />
-            </div>
-            <AdminFieldLabel label="Slack default channel ID" help={HELP.settings.slackChannelId}>
-              <input className="admin-input" value={(config.slackChannelId as string) || ''}
-                placeholder="C0123456789"
-                onChange={e => setConfig(c => ({ ...c!, slackChannelId: e.target.value }))} />
-            </AdminFieldLabel>
-            <p style={{ fontSize: 12, color: '#9b9d9f', margin: '8px 0 16px' }}>
-              Slack bot token: {statusOk('slackBotTokenConfigured')}
-              {' · '}Signing secret: {statusOk('slackSigningSecretConfigured')}
-            </p>
-
-            <div className="admin-toggle">
-              <AdminFieldLabel label="Microsoft Teams enabled" help={HELP.settings.teamsEnabled} inline />
-              <input type="checkbox" checked={!!config.teamsEnabled} onChange={() => toggle('teamsEnabled')} />
-            </div>
-            <AdminFieldLabel label="Teams service URL override" help={HELP.settings.teamsServiceUrl}>
-              <input className="admin-input" value={(config.teamsServiceUrl as string) || ''}
-                placeholder="Usually derived from bot activity"
-                onChange={e => setConfig(c => ({ ...c!, teamsServiceUrl: e.target.value }))} />
-            </AdminFieldLabel>
-            <p style={{ fontSize: 12, color: '#9b9d9f', margin: '8px 0 0' }}>
-              Teams app ID: {statusOk('teamsAppIdConfigured')}
-              {' · '}App password: {statusOk('teamsAppPasswordConfigured')}
-            </p>
-          </div>
+          {themePreview}
         </div>
-
-        <aside className="admin-settings-preview">
-          <p className="admin-label-text" style={{ marginBottom: 8 }}>Live preview</p>
-          <ThemePreview
-            brandName={(config.themeBrandName as string) || 'Your brand'}
-            logoUrl={(config.themeLogoUrl as string) || undefined}
-            primaryColor={(config.themePrimaryColor as string) || '#77c043'}
-            accentColor={(config.themeAccentColor as string) || '#4f8a28'}
-            backgroundColor={(config.themeBackgroundColor as string) || '#000'}
-            surfaceColor={(config.themeSurfaceColor as string) || '#111213'}
-            textColor={(config.themeTextColor as string) || '#fff'}
-            chatTitle={(config.themeChatTitle as string) || 'Chat'}
-            chatSubtitle={(config.demoChatSubtitle as string) || undefined}
-          />
-        </aside>
-      </div>
+      ) : (
+        <div className="admin-settings-tab-panel" role="tabpanel">
+          {activeTab === 'behavior' && behaviorPanel}
+          {activeTab === 'leads' && leadsPanel}
+          {activeTab === 'events' && eventsPanel}
+          {activeTab === 'integrations' && integrationsPanel}
+        </div>
+      )}
 
       <div className={`admin-save-bar${dirty ? ' is-dirty' : ''}`}>
         <span>{dirty ? 'Unsaved changes' : 'All changes saved'}</span>

@@ -753,6 +753,14 @@
   border-bottom-color: var(--admin-accent);
   font-weight: 600;
 }
+button.admin-flow-tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-family: inherit;
+  cursor: pointer;
+}
+.admin-settings-tab-panel { min-height: 200px; }
 .admin-flow-header {
   display: flex;
   align-items: flex-start;
